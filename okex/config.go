@@ -2,10 +2,9 @@ package okex
 
 import (
 	"context"
-	"net"
 	"net/http"
-	"time"
 
+	"github.com/blockcdn-go/exchange-sdk-go/clean"
 	"github.com/gorilla/websocket"
 )
 
@@ -113,30 +112,9 @@ func DefaultConfig() *Config {
 	// todo: 完善默认配置
 	cfg.WithRESTHost("")
 	cfg.WithWSSHost("okexcomreal.bafang.com:10441")
-	cfg.WithHTTPClient(defaultHTTPClient())
-	cfg.WithWSSDialer(defaultWSSDialer())
+	cfg.WithHTTPClient(clean.DefaultPooledClient())
+	cfg.WithWSSDialer(websocket.DefaultDialer)
 	cfg.WithUseSSL(true)
 
 	return cfg
-}
-
-func defaultHTTPClient() *http.Client {
-	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConns:        100,
-		IdleConnTimeout:     30 * time.Second,
-		TLSHandshakeTimeout: 10 * time.Second,
-	}
-
-	return &http.Client{Transport: transport}
-}
-
-func defaultWSSDialer() *websocket.Dialer {
-	dialer := websocket.DefaultDialer
-	dialer.EnableCompression = true
-	return dialer
 }
