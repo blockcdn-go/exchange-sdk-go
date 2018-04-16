@@ -1,14 +1,13 @@
-package okex
+package config
 
 import (
 	"context"
 	"net/http"
 
-	"github.com/blockcdn-go/exchange-sdk-go/clean"
 	"github.com/gorilla/websocket"
 )
 
-// Config 是okex sdk的相关配置
+// Config 是sdk的相关配置
 type Config struct {
 	RESTHost   *string
 	WSSHost    *string
@@ -104,17 +103,4 @@ func mergeInConfig(dst *Config, other *Config) {
 	if other.Context != nil {
 		dst.Context = other.Context
 	}
-}
-
-// DefaultConfig 返回默认sdk配置
-func DefaultConfig() *Config {
-	cfg := &Config{}
-	// todo: 完善默认配置
-	cfg.WithRESTHost("")
-	cfg.WithWSSHost("okexcomreal.bafang.com:10441")
-	cfg.WithHTTPClient(clean.DefaultPooledClient())
-	cfg.WithWSSDialer(websocket.DefaultDialer)
-	cfg.WithUseSSL(true)
-
-	return cfg
 }

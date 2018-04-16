@@ -10,12 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blockcdn-go/exchange-sdk-go/config"
 	"github.com/gorilla/websocket"
 )
 
 // WSSClient 提供okex API调用的客户端
 type WSSClient struct {
-	config Config
+	config config.Config
 	ticker *time.Ticker
 	conn   *websocket.Conn
 
@@ -28,8 +29,8 @@ type WSSClient struct {
 }
 
 // NewWSSClient 创建一个新的Websocket client
-func NewWSSClient(config *Config) *WSSClient {
-	cfg := DefaultConfig()
+func NewWSSClient(config *config.Config) *WSSClient {
+	cfg := defaultConfig()
 	if config != nil {
 		cfg.MergeIn(config)
 	}
