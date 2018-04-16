@@ -136,5 +136,7 @@ func defaultHTTPClient() *http.Client {
 }
 
 func defaultWSSDialer() *websocket.Dialer {
-	return websocket.DefaultDialer
+	dialer := websocket.DefaultDialer
+	dialer.EnableCompression = true
+	return dialer
 }

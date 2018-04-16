@@ -1,8 +1,12 @@
 package okex
 
 import (
+	"bytes"
+	"compress/flate"
 	"errors"
+	"io/ioutil"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,10 +19,12 @@ type WSSClient struct {
 	ticker *time.Ticker
 	conn   *websocket.Conn
 
+	closed  bool
+	closeMu sync.Mutex
+
 	shouldQuit chan struct{}
 	retry      chan struct{}
 	done       chan struct{}
-	serverMu   sync.Mutex
 }
 
 // NewWSSClient 创建一个新的Websocket client
@@ -36,36 +42,39 @@ func NewWSSClient(config *Config) *WSSClient {
 	}
 }
 
-// Query 负责订阅行情数据
-func (c *WSSClient) Query() (<-chan string, error) {
+// QuerySpot 负责订阅现货行情数据
+func (c *WSSClient) QuerySpot() (<-chan []byte, error) {
 	err := c.connect("/websocket")
 	if err != nil {
 		return nil, err
 	}
 
-	result := make(chan string)
+	result := make(chan []byte)
+	go c.start("/websocket", result)
 
-	go c.ping()
-
-	e := event{
-		Event: "addChannel",
-		Parameters: parameter{
-			Base:    "okb",
-			Binary:  "0",
-			Product: "spot",
-			Quote:   "btc",
-			Type:    "ticker",
-		},
-	}
-	err = c.conn.WriteJSON(e)
+	err = c.subscribeSpot()
 	if err != nil {
+		c.Close()
 		return nil, err
 	}
 
 	return result, nil
 }
 
-func (c *WSSClient) ping() {
+func (c *WSSClient) subscribeSpot() error {
+	for _, v := range events {
+		err := c.conn.WriteJSON(v)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *WSSClient) start(path string, msgCh chan<- []byte) {
+	go c.query(msgCh)
+
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
@@ -73,10 +82,65 @@ func (c *WSSClient) ping() {
 		select {
 		case <-ticker.C:
 			c.conn.WriteMessage(websocket.TextMessage, []byte("{'event':'ping'}"))
+		case <-c.retry:
+			c.reconnect(path, msgCh)
 		case <-c.shouldQuit:
-			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			c.shutdown()
 			return
 		}
+	}
+}
+
+func (c *WSSClient) shutdown() {
+	c.closeMu.Lock()
+	c.closed = true
+	c.closeMu.Unlock()
+
+	c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	c.conn.Close()
+	close(c.done)
+}
+
+func (c *WSSClient) reconnect(path string, msgCh chan<- []byte) {
+	err := c.connect(path)
+	if err != nil {
+		return
+	}
+
+	go c.query(msgCh)
+	err = c.subscribeSpot()
+	if err != nil {
+		c.closeMu.Lock()
+		defer c.closeMu.Unlock()
+
+		if !c.closed {
+			c.retry <- struct{}{}
+		}
+	}
+}
+
+func (c *WSSClient) query(msgCh chan<- []byte) {
+	for {
+		_, msg, err := c.conn.ReadMessage()
+		if err != nil {
+			c.closeMu.Lock()
+			defer c.closeMu.Unlock()
+
+			if !c.closed {
+				c.retry <- struct{}{}
+			}
+			return
+		}
+
+		if strings.Contains(string(msg), "pong") {
+			msgCh <- msg
+			continue
+		}
+
+		buf := bytes.NewBuffer(msg)
+		z := flate.NewReader(buf)
+		m, _ := ioutil.ReadAll(z)
+		msgCh <- m
 	}
 }
 
@@ -95,10 +159,8 @@ func (c *WSSClient) Close() {
 }
 
 func (c *WSSClient) connect(path string) error {
-	c.serverMu.Lock()
-	defer c.serverMu.Unlock()
-
 	if c.conn != nil {
+		c.conn.Close()
 		c.conn = nil
 	}
 
