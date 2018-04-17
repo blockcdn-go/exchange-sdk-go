@@ -3,20 +3,22 @@ package config
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 // Config 是sdk的相关配置
 type Config struct {
-	RESTHost   *string
-	WSSHost    *string
-	APIKey     *string
-	Secret     *string
-	UseSSL     *bool
-	HTTPClient *http.Client
-	WSSDialer  *websocket.Dialer
-	Context    context.Context
+	RESTHost     *string
+	WSSHost      *string
+	APIKey       *string
+	Secret       *string
+	UseSSL       *bool
+	PingDuration *time.Duration
+	HTTPClient   *http.Client
+	WSSDialer    *websocket.Dialer
+	Context      context.Context
 }
 
 // WithAPIKey 设置sdk访问的API key
@@ -67,6 +69,12 @@ func (c *Config) WithWSSHost(host string) *Config {
 	return c
 }
 
+// WithPingDuration 设置保活消息发送的时间间隔
+func (c *Config) WithPingDuration(dur time.Duration) *Config {
+	c.PingDuration = &dur
+	return c
+}
+
 // MergeIn 用于合并多个配置
 func (c *Config) MergeIn(cfgs ...*Config) {
 	for _, other := range cfgs {
@@ -102,5 +110,8 @@ func mergeInConfig(dst *Config, other *Config) {
 	}
 	if other.Context != nil {
 		dst.Context = other.Context
+	}
+	if other.PingDuration != nil {
+		dst.PingDuration = other.PingDuration
 	}
 }
