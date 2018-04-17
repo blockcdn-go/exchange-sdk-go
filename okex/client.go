@@ -54,14 +54,14 @@ func (c *WSSClient) QuerySpot() (<-chan []byte, error) {
 		return nil, err
 	}
 
-	result := make(chan []byte)
-	go c.start(cid, "/websocket", result)
-
 	err = c.subscribeSpot(conn)
 	if err != nil {
 		c.Close()
 		return nil, err
 	}
+
+	result := make(chan []byte)
+	go c.start(cid, "/websocket", result)
 
 	return result, nil
 }
@@ -117,7 +117,6 @@ func (c *WSSClient) reconnect(path string, msgCh chan<- []byte) {
 		return
 	}
 
-	go c.query(cid, msgCh)
 	err = c.subscribeSpot(conn)
 	if err != nil {
 		c.closeMu.Lock()
@@ -126,7 +125,10 @@ func (c *WSSClient) reconnect(path string, msgCh chan<- []byte) {
 		if !c.closed {
 			c.retry <- cid
 		}
+		return
 	}
+
+	go c.query(cid, msgCh)
 }
 
 func (c *WSSClient) query(cid string, msgCh chan<- []byte) {
