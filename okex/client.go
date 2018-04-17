@@ -200,7 +200,7 @@ func (c *WSSClient) connect(path string) (string, *websocket.Conn, error) {
 			if err == nil {
 				u := uuid.New().String()
 				c.conns[u] = conn
-				return "", nil, nil
+				return u, conn, nil
 			}
 		case <-c.shouldQuit:
 			return "", nil, errors.New("Connection is closing")
