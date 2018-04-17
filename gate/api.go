@@ -1,10 +1,12 @@
 package gate
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/json-iterator/go"
+	"github.com/json-iterator/go/extra"
 )
 
 // MarketListResponse 是MarketList接口的返回值
@@ -24,6 +26,7 @@ type MarketListResponse struct {
 	RatePercent string  `json:"rate_percent"`
 	Trend       string  `json:"trend"`
 	Supply      int64   `json:"supply"`
+	MarketCap   string  `json:"marketcap"`
 }
 
 // MarketList 交易市场详细行情接口
@@ -49,9 +52,9 @@ func (c *Client) MarketList() ([]MarketListResponse, error) {
 		return nil, err
 	}
 
-	fmt.Println(string(body))
+	extra.RegisterFuzzyDecoders()
 
-	err = json.Unmarshal(body, &result)
+	err = jsoniter.Unmarshal(body, &result)
 	if err != nil {
 		return nil, err
 	}
