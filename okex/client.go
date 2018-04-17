@@ -17,7 +17,6 @@ import (
 // WSSClient 提供okex API调用的客户端
 type WSSClient struct {
 	config config.Config
-	ticker *time.Ticker
 	conn   *websocket.Conn
 
 	closed  bool
