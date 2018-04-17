@@ -1,6 +1,8 @@
 package okex
 
 import (
+	"log"
+	"encoding/json"
 	"bytes"
 	"compress/flate"
 	"errors"
@@ -76,7 +78,7 @@ func (c *WSSClient) subscribeSpot() error {
 func (c *WSSClient) start(path string, msgCh chan<- []byte) {
 	go c.query(msgCh)
 
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -134,13 +136,22 @@ func (c *WSSClient) query(msgCh chan<- []byte) {
 		}
 
 		if strings.Contains(string(msg), "pong") {
-			msgCh <- msg
 			continue
 		}
 
 		buf := bytes.NewBuffer(msg)
 		z := flate.NewReader(buf)
 		m, _ := ioutil.ReadAll(z)
+		var subrsp [1]struct{
+			Data struct{
+				Result string `json:"result"`
+			}	`json:"data"`
+		};
+		if e := json.Unmarshal(m,&subrsp); e != nil {
+			// 订阅请求的回复，不包含数据，直接忽略
+			log.Print("ignore subscribe respone.")
+			continue
+		}
 		msgCh <- m
 	}
 }
