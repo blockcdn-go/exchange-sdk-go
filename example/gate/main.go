@@ -22,4 +22,16 @@ func main() {
 	for _, v := range resp {
 		fmt.Printf("%v\n", v)
 	}
+	ticker, e := c.TickerInfo("btc","usdt")
+	if  e == nil {
+		fmt.Printf("ticker:%v\n",ticker)
+	}else{
+		fmt.Print(e)
+	}
+	depth, e1 := c.DepthInfo("btc","usdt")
+	if  e1 == nil {
+		fmt.Printf("depth:%v\n",depth)
+	}else{
+		fmt.Print(e1)
+	}
 }
