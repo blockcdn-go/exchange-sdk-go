@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
 	"strings"
@@ -162,8 +161,6 @@ func (c *WSSClient) query(cid string, msgCh chan<- []byte) {
 		buf := bytes.NewBuffer(msg)
 		gz, err := gzip.NewReader(buf)
 		if err != nil {
-			log.Println("gzip error: ", err)
-			log.Println(string(msg))
 			continue
 		}
 		message, _ := ioutil.ReadAll(gz)
@@ -184,7 +181,6 @@ func (c *WSSClient) pong(cid string, conn *websocket.Conn, msg []byte) {
 
 	err := json.Unmarshal(msg, &ping)
 	if err != nil {
-		log.Println(string(msg))
 		c.closeMu.Lock()
 		defer c.closeMu.Unlock()
 
