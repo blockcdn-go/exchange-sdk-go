@@ -19,7 +19,6 @@ import (
 // WSSClient 提供okex API调用的客户端
 type WSSClient struct {
 	config config.Config
-	ticker *time.Ticker
 	conn   *websocket.Conn
 
 	closed  bool
@@ -183,10 +182,10 @@ func (c *WSSClient) connect(path string) error {
 		return nil
 	}
 
-	for {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
+	for {
 		select {
 		case <-ticker.C:
 			conn, _, err := c.config.WSSDialer.Dial(u.String(), nil)
