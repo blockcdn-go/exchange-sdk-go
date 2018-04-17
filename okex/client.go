@@ -1,31 +1,33 @@
 package okex
 
 import (
-	"log"
-	"encoding/json"
 	"bytes"
 	"compress/flate"
+	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 // WSSClient 提供okex API调用的客户端
 type WSSClient struct {
 	config config.Config
-	conn   *websocket.Conn
+	conns  map[string]*websocket.Conn
 
 	closed  bool
 	closeMu sync.Mutex
+	once    sync.Once
 
 	shouldQuit chan struct{}
-	retry      chan struct{}
+	retry      chan string
 	done       chan struct{}
 }
 
@@ -38,23 +40,24 @@ func NewWSSClient(config *config.Config) *WSSClient {
 
 	return &WSSClient{
 		config:     *cfg,
+		conns:      make(map[string]*websocket.Conn),
 		shouldQuit: make(chan struct{}),
-		retry:      make(chan struct{}),
+		retry:      make(chan string),
 		done:       make(chan struct{}),
 	}
 }
 
 // QuerySpot 负责订阅现货行情数据
 func (c *WSSClient) QuerySpot() (<-chan []byte, error) {
-	err := c.connect("/websocket")
+	cid, conn, err := c.connect("/websocket")
 	if err != nil {
 		return nil, err
 	}
 
 	result := make(chan []byte)
-	go c.start("/websocket", result)
+	go c.start(cid, "/websocket", result)
 
-	err = c.subscribeSpot()
+	err = c.subscribeSpot(conn)
 	if err != nil {
 		c.Close()
 		return nil, err
@@ -63,9 +66,9 @@ func (c *WSSClient) QuerySpot() (<-chan []byte, error) {
 	return result, nil
 }
 
-func (c *WSSClient) subscribeSpot() error {
+func (c *WSSClient) subscribeSpot(conn *websocket.Conn) error {
 	for _, v := range events {
-		err := c.conn.WriteJSON(v)
+		err := conn.WriteJSON(v)
 		if err != nil {
 			return err
 		}
@@ -74,17 +77,19 @@ func (c *WSSClient) subscribeSpot() error {
 	return nil
 }
 
-func (c *WSSClient) start(path string, msgCh chan<- []byte) {
-	go c.query(msgCh)
+func (c *WSSClient) start(cid, path string, msgCh chan<- []byte) {
+	go c.query(cid, msgCh)
 
-	ticker := time.NewTicker(60 * time.Second)
+	ticker := time.NewTicker(*c.config.PingDuration)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			c.conn.WriteMessage(websocket.TextMessage, []byte("{'event':'ping'}"))
-		case <-c.retry:
+			conn := c.conns[cid]
+			conn.WriteMessage(websocket.TextMessage, []byte("{'event':'ping'}"))
+		case cid := <-c.retry:
+			delete(c.conns, cid)
 			c.reconnect(path, msgCh)
 		case <-c.shouldQuit:
 			c.shutdown()
@@ -98,38 +103,45 @@ func (c *WSSClient) shutdown() {
 	c.closed = true
 	c.closeMu.Unlock()
 
-	c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	c.conn.Close()
+	for _, conn := range c.conns {
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		conn.Close()
+	}
+
 	close(c.done)
 }
 
 func (c *WSSClient) reconnect(path string, msgCh chan<- []byte) {
-	err := c.connect(path)
+	cid, conn, err := c.connect(path)
 	if err != nil {
 		return
 	}
 
-	go c.query(msgCh)
-	err = c.subscribeSpot()
+	go c.query(cid, msgCh)
+	err = c.subscribeSpot(conn)
 	if err != nil {
 		c.closeMu.Lock()
 		defer c.closeMu.Unlock()
 
 		if !c.closed {
-			c.retry <- struct{}{}
+			c.retry <- cid
 		}
 	}
 }
 
-func (c *WSSClient) query(msgCh chan<- []byte) {
+func (c *WSSClient) query(cid string, msgCh chan<- []byte) {
 	for {
-		_, msg, err := c.conn.ReadMessage()
+		conn, ok := c.conns[cid]
+		if !ok {
+			return
+		}
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			c.closeMu.Lock()
 			defer c.closeMu.Unlock()
 
 			if !c.closed {
-				c.retry <- struct{}{}
+				c.retry <- cid
 			}
 			return
 		}
@@ -141,12 +153,12 @@ func (c *WSSClient) query(msgCh chan<- []byte) {
 		buf := bytes.NewBuffer(msg)
 		z := flate.NewReader(buf)
 		m, _ := ioutil.ReadAll(z)
-		var subrsp [1]struct{
-			Data struct{
+		var subrsp [1]struct {
+			Data struct {
 				Result string `json:"result"`
-			}	`json:"data"`
-		};
-		if e := json.Unmarshal(m,&subrsp); e != nil {
+			} `json:"data"`
+		}
+		if e := json.Unmarshal(m, &subrsp); e != nil {
 			// 订阅请求的回复，不包含数据，直接忽略
 			log.Print("ignore subscribe respone.")
 			continue
@@ -157,7 +169,7 @@ func (c *WSSClient) query(msgCh chan<- []byte) {
 
 // Close 向服务端发起关闭操作
 func (c *WSSClient) Close() {
-	if c.conn == nil {
+	if c.conns == nil {
 		return
 	}
 
@@ -169,17 +181,13 @@ func (c *WSSClient) Close() {
 	}
 }
 
-func (c *WSSClient) connect(path string) error {
-	if c.conn != nil {
-		c.conn.Close()
-		c.conn = nil
-	}
-
+func (c *WSSClient) connect(path string) (string, *websocket.Conn, error) {
 	u := url.URL{Scheme: "wss", Host: *c.config.WSSHost, Path: path}
 	conn, _, err := c.config.WSSDialer.Dial(u.String(), nil)
 	if err == nil {
-		c.conn = conn
-		return nil
+		u := uuid.New().String()
+		c.conns[u] = conn
+		return u, conn, nil
 	}
 
 	ticker := time.NewTicker(time.Second)
@@ -190,11 +198,12 @@ func (c *WSSClient) connect(path string) error {
 		case <-ticker.C:
 			conn, _, err := c.config.WSSDialer.Dial(u.String(), nil)
 			if err == nil {
-				c.conn = conn
-				return nil
+				u := uuid.New().String()
+				c.conns[u] = conn
+				return "", nil, nil
 			}
 		case <-c.shouldQuit:
-			return errors.New("Connection is closing")
+			return "", nil, errors.New("Connection is closing")
 		}
 	}
 }
