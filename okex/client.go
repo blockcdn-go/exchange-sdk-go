@@ -1,12 +1,12 @@
 package okex
 
 import (
-	"log"
-	"encoding/json"
 	"bytes"
 	"compress/flate"
+	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"strings"
 	"sync"
@@ -80,7 +80,7 @@ func (c *WSSClient) subscribeSpot(conn *websocket.Conn) error {
 func (c *WSSClient) start(cid, path string, msgCh chan<- []byte) {
 	go c.query(cid, msgCh)
 
-	ticker := time.NewTicker(60 * time.Second)
+	ticker := time.NewTicker(*c.config.PingDuration)
 	defer ticker.Stop()
 
 	for {
@@ -153,12 +153,12 @@ func (c *WSSClient) query(cid string, msgCh chan<- []byte) {
 		buf := bytes.NewBuffer(msg)
 		z := flate.NewReader(buf)
 		m, _ := ioutil.ReadAll(z)
-		var subrsp [1]struct{
-			Data struct{
+		var subrsp [1]struct {
+			Data struct {
 				Result string `json:"result"`
-			}	`json:"data"`
-		};
-		if e := json.Unmarshal(m,&subrsp); e != nil {
+			} `json:"data"`
+		}
+		if e := json.Unmarshal(m, &subrsp); e != nil {
 			// 订阅请求的回复，不包含数据，直接忽略
 			log.Print("ignore subscribe respone.")
 			continue
