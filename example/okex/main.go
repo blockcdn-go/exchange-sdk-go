@@ -40,6 +40,7 @@ func wss(ctx context.Context, id string) {
 		case m := <-msgCh:
 			fmt.Printf("ID: %s, message: %s\n", id, string(m))
 		case <-ctx.Done():
+			wss.Close()
 			return
 		}
 	}

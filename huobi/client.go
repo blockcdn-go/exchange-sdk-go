@@ -169,7 +169,7 @@ func (c *WSSClient) query(cid string, msgCh chan<- []byte) {
 		message, _ := ioutil.ReadAll(gz)
 
 		if strings.Contains(string(message), "ping") {
-			c.pong(cid, conn, msg)
+			c.pong(cid, conn, message)
 			continue
 		}
 
@@ -184,6 +184,7 @@ func (c *WSSClient) pong(cid string, conn *websocket.Conn, msg []byte) {
 
 	err := json.Unmarshal(msg, &ping)
 	if err != nil {
+		log.Println(string(msg))
 		c.closeMu.Lock()
 		defer c.closeMu.Unlock()
 
