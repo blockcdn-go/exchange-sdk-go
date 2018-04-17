@@ -3,10 +3,8 @@ package okex
 import (
 	"bytes"
 	"compress/flate"
-	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"strings"
 	"sync"
@@ -155,16 +153,20 @@ func (c *WSSClient) query(cid string, msgCh chan<- []byte) {
 		buf := bytes.NewBuffer(msg)
 		z := flate.NewReader(buf)
 		m, _ := ioutil.ReadAll(z)
-		var subrsp [1]struct {
-			Data struct {
-				Result string `json:"result"`
-			} `json:"data"`
-		}
-		if e := json.Unmarshal(m, &subrsp); e != nil {
-			// 订阅请求的回复，不包含数据，直接忽略
-			log.Print("ignore subscribe respone.")
-			continue
-		}
+
+		// 作为sdk开发者来说，我们并不知晓调用方需要哪些数据，因此这里不做过滤，而在调用方再做过滤
+		// 从代码致性效率来说，这里反序列化一次，然后将消息传给调用方，调用方仍然需要反序列化，因此直接在调用方做反序列化并过滤
+		// 而sdk中不做处理
+		// var subrsp [1]struct {
+		// 	Data struct {
+		// 		Result string `json:"result"`
+		// 	} `json:"data"`
+		// }
+		// if e := json.Unmarshal(m, &subrsp); e != nil {
+		// 	// 订阅请求的回复，不包含数据，直接忽略
+		// 	log.Print("ignore subscribe respone.")
+		// 	continue
+		// }
 		msgCh <- m
 	}
 }
