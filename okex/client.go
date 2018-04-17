@@ -171,10 +171,10 @@ func (c *WSSClient) connect(path string) error {
 		return nil
 	}
 
-	for {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
+	for {
 		select {
 		case <-ticker.C:
 			conn, _, err := c.config.WSSDialer.Dial(u.String(), nil)
