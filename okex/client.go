@@ -130,11 +130,12 @@ func (c *WSSClient) reconnect(path string, msgCh chan<- []byte) {
 }
 
 func (c *WSSClient) query(cid string, msgCh chan<- []byte) {
+	conn, ok := c.conns[cid]
+	if !ok {
+		return
+	}
+
 	for {
-		conn, ok := c.conns[cid]
-		if !ok {
-			return
-		}
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			c.closeMu.Lock()

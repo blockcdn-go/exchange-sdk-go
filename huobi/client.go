@@ -109,12 +109,12 @@ func (c *WSSClient) shutdown() {
 }
 
 func (c *WSSClient) query(cid string, msgCh chan<- []byte) {
-	for {
-		conn, ok := c.conns[cid]
-		if !ok {
-			return
-		}
+	conn, ok := c.conns[cid]
+	if !ok {
+		return
+	}
 
+	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			c.closeMu.Lock()
