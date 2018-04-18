@@ -8,9 +8,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"io/ioutil"
+	"strings"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
+	"github.com/gotoxu/query"
 )
 
 // Client 提供gate API的调用客户端
@@ -61,6 +62,29 @@ func (c *Client) doRequest(r *request) (*http.Response, error) {
 	return c.config.HTTPClient.Do(req)
 }
 
+func (c *Client) encodeFormBody(obj interface{}) (io.Reader, string, error) {
+	encoder := query.NewEncoder()
+
+	var err error
+	var form url.Values
+	form, err = encoder.Encode(obj)
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	return strings.NewReader(form.Encode()), form.Encode(), nil
+}
+
+func (c *Client) sign(params string) string {
+	key := []byte(*c.config.Secret)
+	mac := hmac.New(sha512.New, key)
+	mac.Write([]byte(params))
+
+	hash := mac.Sum(nil)
+	return hex.EncodeToString(hash)
+}
+
 type request struct {
 	config *config.Config
 	method string
@@ -68,10 +92,13 @@ type request struct {
 	params url.Values
 	body   io.Reader
 	header http.Header
+	sign   string
 	ctx    context.Context
 }
 
 func (r *request) toHTTP() (*http.Request, error) {
+	r.url.RawQuery = r.params.Encode()
+
 	req, err := http.NewRequest(r.method, r.url.RequestURI(), r.body)
 	if err != nil {
 		return nil, err
@@ -80,32 +107,15 @@ func (r *request) toHTTP() (*http.Request, error) {
 	req.URL = r.url
 	req.Header = r.header
 
-	var str string
-	if r.body != nil {
-		p, e := ioutil.ReadAll(r.body)
-		if e == nil {
-			str = string(p)
-		}
-	}
-	//sign := r.sign(r.params.Encode())
-	sign := r.sign(str)
-
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("key", *r.config.APIKey)
-	req.Header.Set("sign", sign)
+	if r.sign != "" {
+		req.Header.Set("key", *r.config.APIKey)
+		req.Header.Set("sign", r.sign)
+	}
 
 	if r.ctx != nil {
 		return req.WithContext(r.ctx), nil
 	}
 
 	return req, nil
-}
-
-func (r *request) sign(params string) string {
-	key := []byte(*r.config.Secret)
-	mac := hmac.New(sha512.New, key)
-	mac.Write([]byte(params))
-
-	hash := mac.Sum(nil)
-	return hex.EncodeToString(hash)
 }

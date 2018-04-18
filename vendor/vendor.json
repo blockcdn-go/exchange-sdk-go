@@ -15,6 +15,12 @@
 			"revisionTime": "2018-04-16T03:20:28Z"
 		},
 		{
+			"checksumSHA1": "jvK5bjuD6FzFAD0Onc8ErYrPH3M=",
+			"path": "github.com/gotoxu/query",
+			"revision": "249d266ea2a35ab51a7124366895d464d1b44709",
+			"revisionTime": "2018-04-15T13:36:01Z"
+		},
+		{
 			"checksumSHA1": "EFoWu07IyDmIvpWV/cugOfO8BR8=",
 			"path": "github.com/json-iterator/go",
 			"revision": "f89479f5c0d83b365504d632ab57390447bb406a",

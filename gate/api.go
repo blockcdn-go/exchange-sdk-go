@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"strconv"
 
 	"github.com/json-iterator/go"
@@ -76,23 +75,23 @@ func (c *Client) MarketList() ([]MarketListResponse, error) {
     quoteVolume: 兑换货币交易量
 */
 
-type TickerResponse struct{
-	Base		string
-	Quote		string
-	BaseVolume	float64 `josn:"baseVolume"`
-	High24hr	float64 `json:"high24hr"`
-	Low24hr		float64 `json:"low24hr"`
-	HighestBid	float64 `json:"highestBid"`
-	LowestAsk	float64 `json:"lowestAsk"`
-	Last		float64 `json:"last"`
+type TickerResponse struct {
+	Base          string
+	Quote         string
+	BaseVolume    float64 `josn:"baseVolume"`
+	High24hr      float64 `json:"high24hr"`
+	Low24hr       float64 `json:"low24hr"`
+	HighestBid    float64 `json:"highestBid"`
+	LowestAsk     float64 `json:"lowestAsk"`
+	Last          float64 `json:"last"`
 	PercentChange float64 `json:"percentChange"`
-	QuoteVolume float64 `json:"quoteVolume"`
+	QuoteVolume   float64 `json:"quoteVolume"`
 }
 
-func (c *Client) TickerInfo(base,quote string) (TickerResponse, error) {
-	path := fmt.Sprintf("/api2/1/ticker/%s_%s",base,quote)
+func (c *Client) TickerInfo(base, quote string) (TickerResponse, error) {
+	path := fmt.Sprintf("/api2/1/ticker/%s_%s", base, quote)
 	var result TickerResponse
-	e := c.httpReq("GET",path, "",&result)
+	e := c.httpReq("GET", path, nil, &result)
 	result.Base = base
 	result.Quote = quote
 	return result, e
@@ -101,42 +100,42 @@ func (c *Client) TickerInfo(base,quote string) (TickerResponse, error) {
 // 市场深度
 /*
 
-*/
+ */
 
-type Depth5 struct{
-	Base		string
-	Quote		string
-	AskPirce1	float64
-	AskPirce2	float64
-	AskPirce3	float64
-	AskPirce4	float64
-	AskPirce5	float64
-	AskSize1	float64
-	AskSize2	float64
-	AskSize3	float64
-	AskSize4	float64
-	AskSize5	float64
+type Depth5 struct {
+	Base      string
+	Quote     string
+	AskPirce1 float64
+	AskPirce2 float64
+	AskPirce3 float64
+	AskPirce4 float64
+	AskPirce5 float64
+	AskSize1  float64
+	AskSize2  float64
+	AskSize3  float64
+	AskSize4  float64
+	AskSize5  float64
 	//
-	BidPrice1	float64
-	BidPrice2	float64
-	BidPrice3	float64
-	BidPrice4	float64
-	BidPrice5	float64
-	BidSize1	float64
-	BidSize2	float64
-	BidSize3	float64
-	BidSize4	float64
-	BidSize5	float64
+	BidPrice1 float64
+	BidPrice2 float64
+	BidPrice3 float64
+	BidPrice4 float64
+	BidPrice5 float64
+	BidSize1  float64
+	BidSize2  float64
+	BidSize3  float64
+	BidSize4  float64
+	BidSize5  float64
 }
 
-func (c *Client) DepthInfo(base,quote string)(Depth5,error){
-	path := fmt.Sprintf("/api2/1/orderBook/%s_%s",base,quote)
-	t := struct{
-		Asks 	[][]float64	`json:"asks"`
-		Bids	[][]float64 `json:"bids"`
+func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
+	path := fmt.Sprintf("/api2/1/orderBook/%s_%s", base, quote)
+	t := struct {
+		Asks [][]float64 `json:"asks"`
+		Bids [][]float64 `json:"bids"`
 	}{}
 
-	e := c.httpReq("GET",path,"",&t)
+	e := c.httpReq("GET", path, nil, &t)
 	if e != nil {
 		return Depth5{}, e
 	}
@@ -146,7 +145,7 @@ func (c *Client) DepthInfo(base,quote string)(Depth5,error){
 	var r Depth5
 	r.Base = base
 	r.Quote = quote
-	
+
 	r.AskPirce1 = t.Asks[0][0]
 	r.AskPirce2 = t.Asks[1][0]
 	r.AskPirce3 = t.Asks[2][0]
@@ -171,24 +170,23 @@ func (c *Client) DepthInfo(base,quote string)(Depth5,error){
 	return r, nil
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 /// 交易类接口
 
-type Balance struct{
+type Balance struct {
 	Available map[string]float64
 	Locked    map[string]float64
 }
 
 // 获取帐号资金余额
-func (c *Client)BalanceInfo()(Balance, error){
+func (c *Client) BalanceInfo() (Balance, error) {
 	path := "/api2/1/private/balances"
-	b := struct{
-		Result 		string 		`json:"result"`
-		Available 	interface{} `json:"available"`
-		Locked 		interface{} `json:"locked"`
+	b := struct {
+		Result    string      `json:"result"`
+		Available interface{} `json:"available"`
+		Locked    interface{} `json:"locked"`
 	}{}
-	e := c.httpReq("POST",path,"",&b)
+	e := c.httpReq("POST", path, nil, &b)
 	if e != nil {
 		return Balance{}, e
 	}
@@ -216,18 +214,21 @@ func (c *Client)BalanceInfo()(Balance, error){
 	return r, nil
 }
 
-
 // 获取充值地址
-func (c *Client)DepositAddr(currency string)(string, error) {
+func (c *Client) DepositAddr(currency string) (string, error) {
 	path := "/api2/1/private/depositAddress"
-	rsp := struct{
-		Result 	string 	`json:"result"`
-		Addr	string 	`json:"addr"`
-		Message string 	`json:"message"`
-		Code 	int64 	`json:"code"`
+	rsp := struct {
+		Result  string `json:"result"`
+		Addr    string `json:"addr"`
+		Message string `json:"message"`
+		Code    int64  `json:"code"`
 	}{}
-	arg := fmt.Sprintf(`currency=%s`,currency)
-	e := c.httpReq("POST",path,arg,&rsp)
+
+	arg := struct {
+		Currency string `url:"currency"`
+	}{currency}
+
+	e := c.httpReq("POST", path, arg, &rsp)
 	if e != nil {
 		return "", e
 	}
@@ -237,26 +238,26 @@ func (c *Client)DepositAddr(currency string)(string, error) {
 	return rsp.Addr, nil
 }
 
-type DWInfo struct{
-	ID 			string `json:"id"`
-	Currency 	string `json:"currency"`
-	Address		string `json:"address"`
-	Amount		string `json:"amount"`
-	Txid		string `json:"txid"`
-	Timestamp	string `json:"timestamp"`
-	Status		string `json:"status"`	//DONE:完成; CANCEL:取消; REQUEST:请求中 
+type DWInfo struct {
+	ID        string `json:"id"`
+	Currency  string `json:"currency"`
+	Address   string `json:"address"`
+	Amount    string `json:"amount"`
+	Txid      string `json:"txid"`
+	Timestamp string `json:"timestamp"`
+	Status    string `json:"status"` //DONE:完成; CANCEL:取消; REQUEST:请求中
 }
 
 // 获取充值提现历史
 // return1 充值， return2 提现
-func (c *Client)DepositsWithdrawals()([]DWInfo,[]DWInfo,error){
-	rsp := struct{
-		Result 	string `json:"result"`
-		Message string `json:"message"`
-		Deposits []DWInfo `json:"deposits"`
+func (c *Client) DepositsWithdrawals() ([]DWInfo, []DWInfo, error) {
+	rsp := struct {
+		Result    string   `json:"result"`
+		Message   string   `json:"message"`
+		Deposits  []DWInfo `json:"deposits"`
 		Withdraws []DWInfo `json:"withdraws"`
 	}{}
-	e := c.httpReq("POST","/api2/1/private/depositsWithdrawals","",&rsp)
+	e := c.httpReq("POST", "/api2/1/private/depositsWithdrawals", nil, &rsp)
 	if e != nil {
 		return nil, nil, e
 	}
@@ -266,12 +267,10 @@ func (c *Client)DepositsWithdrawals()([]DWInfo,[]DWInfo,error){
 	return rsp.Deposits, rsp.Withdraws, nil
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////
 
 func convkv(dst map[string]float64, src map[string]string) error {
-	for k,v := range src {
+	for k, v := range src {
 		f, e := strconv.ParseFloat(v, 64)
 		if e != nil {
 			return e
@@ -281,14 +280,19 @@ func convkv(dst map[string]float64, src map[string]string) error {
 	return nil
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
-func (c *Client)httpReq(method, path, data string, v interface{}) error{
+func (c *Client) httpReq(method, path string, in interface{}, out interface{}) error {
 	r := c.newRequest(method, *c.config.RESTHost, path)
-	if data != "" {
-		r.body = strings.NewReader(data)
+	if in != nil {
+		body, params, err := c.encodeFormBody(in)
+		if err != nil {
+			return err
+		}
+		r.body = body
+		r.sign = c.sign(params)
 	}
+
 	resp, err := c.doRequest(r)
 	if err != nil {
 		return err
@@ -306,7 +310,7 @@ func (c *Client)httpReq(method, path, data string, v interface{}) error{
 
 	extra.RegisterFuzzyDecoders()
 
-	err = jsoniter.Unmarshal(body, v)
+	err = jsoniter.Unmarshal(body, out)
 	if err != nil {
 		return err
 	}
