@@ -34,4 +34,25 @@ func main() {
 	}else{
 		fmt.Print(e1)
 	}
+	b, e2 := c.BalanceInfo()
+	if  e2 == nil {
+		fmt.Printf("BalanceInfo:%v\n",b)
+	}else{
+		fmt.Print(e2)
+	}
+
+	//
+	addr, e3 := c.DepositAddr("btc")
+	if  e3 == nil {
+		fmt.Printf("DepositAddr:%v\n",addr)
+	}else{
+		fmt.Println(e3)
+	}
+
+	d, w, e4 := c.DepositsWithdrawals()
+	if  e4 == nil {
+		fmt.Printf("DepositsWithdrawals:%v, \n %v\n",d, w)
+	}else{
+		fmt.Println(e4)
+	}
 }

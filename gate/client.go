@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"io/ioutil"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
 )
@@ -79,7 +80,15 @@ func (r *request) toHTTP() (*http.Request, error) {
 	req.URL = r.url
 	req.Header = r.header
 
-	sign := r.sign(r.params.Encode())
+	var str string
+	if r.body != nil {
+		p, e := ioutil.ReadAll(r.body)
+		if e == nil {
+			str = string(p)
+		}
+	}
+	//sign := r.sign(r.params.Encode())
+	sign := r.sign(str)
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("key", *r.config.APIKey)

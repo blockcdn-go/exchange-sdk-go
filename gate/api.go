@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
+	"strconv"
 
 	"github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
@@ -90,7 +92,7 @@ type TickerResponse struct{
 func (c *Client) TickerInfo(base,quote string) (TickerResponse, error) {
 	path := fmt.Sprintf("/api2/1/ticker/%s_%s",base,quote)
 	var result TickerResponse
-	e := c.httpReq(path,&result)
+	e := c.httpReq("GET",path, "",&result)
 	result.Base = base
 	result.Quote = quote
 	return result, e
@@ -100,11 +102,6 @@ func (c *Client) TickerInfo(base,quote string) (TickerResponse, error) {
 /*
 
 */
-
-type Depth struct{
-	Asks 	[][]float64	`json:"asks"`
-	Bids	[][]float64 `json:"bids"`
-}
 
 type Depth5 struct{
 	Base		string
@@ -134,8 +131,12 @@ type Depth5 struct{
 
 func (c *Client) DepthInfo(base,quote string)(Depth5,error){
 	path := fmt.Sprintf("/api2/1/orderBook/%s_%s",base,quote)
-	var t Depth
-	e := c.httpReq(path,&t)
+	t := struct{
+		Asks 	[][]float64	`json:"asks"`
+		Bids	[][]float64 `json:"bids"`
+	}{}
+
+	e := c.httpReq("GET",path,"",&t)
 	if e != nil {
 		return Depth5{}, e
 	}
@@ -174,11 +175,123 @@ func (c *Client) DepthInfo(base,quote string)(Depth5,error){
 //////////////////////////////////////////////////////////////////////////
 /// 交易类接口
 
+type Balance struct{
+	Available map[string]float64
+	Locked    map[string]float64
+}
+
+// 获取帐号资金余额
+func (c *Client)BalanceInfo()(Balance, error){
+	path := "/api2/1/private/balances"
+	b := struct{
+		Result 		string 		`json:"result"`
+		Available 	interface{} `json:"available"`
+		Locked 		interface{} `json:"locked"`
+	}{}
+	e := c.httpReq("POST",path,"",&b)
+	if e != nil {
+		return Balance{}, e
+	}
+	if b.Result != "true" {
+		return Balance{}, fmt.Errorf("get balances result false")
+	}
+	var r Balance
+	r.Available = make(map[string]float64)
+	r.Locked = make(map[string]float64)
+
+	t1, o1 := b.Available.(map[string]string)
+	t2, o2 := b.Locked.(map[string]string)
+	if o1 {
+		fmt.Println("Available cast sucess.")
+		if ce := convkv(r.Available, t1); ce != nil {
+			return Balance{}, ce
+		}
+	}
+	if o2 {
+		fmt.Println("Locked cast success.")
+		if ce := convkv(r.Locked, t2); ce != nil {
+			return Balance{}, ce
+		}
+	}
+	return r, nil
+}
+
+
+// 获取充值地址
+func (c *Client)DepositAddr(currency string)(string, error) {
+	path := "/api2/1/private/depositAddress"
+	rsp := struct{
+		Result 	string 	`json:"result"`
+		Addr	string 	`json:"addr"`
+		Message string 	`json:"message"`
+		Code 	int64 	`json:"code"`
+	}{}
+	arg := fmt.Sprintf(`currency=%s`,currency)
+	e := c.httpReq("POST",path,arg,&rsp)
+	if e != nil {
+		return "", e
+	}
+	if rsp.Result != "true" && rsp.Code != 0 {
+		return "", fmt.Errorf(rsp.Message)
+	}
+	return rsp.Addr, nil
+}
+
+type DWInfo struct{
+	ID 			string `json:"id"`
+	Currency 	string `json:"currency"`
+	Address		string `json:"address"`
+	Amount		string `json:"amount"`
+	Txid		string `json:"txid"`
+	Timestamp	string `json:"timestamp"`
+	Status		string `json:"status"`	//DONE:完成; CANCEL:取消; REQUEST:请求中 
+}
+
+// 获取充值提现历史
+// return1 充值， return2 提现
+func (c *Client)DepositsWithdrawals()([]DWInfo,[]DWInfo,error){
+	rsp := struct{
+		Result 	string `json:"result"`
+		Message string `json:"message"`
+		Deposits []DWInfo `json:"deposits"`
+		Withdraws []DWInfo `json:"withdraws"`
+	}{}
+	e := c.httpReq("POST","/api2/1/private/depositsWithdrawals","",&rsp)
+	if e != nil {
+		return nil, nil, e
+	}
+	if rsp.Result != "true" {
+		return nil, nil, fmt.Errorf(rsp.Message)
+	}
+	return rsp.Deposits, rsp.Withdraws, nil
+}
+
+
+
+////////////////////////////////////////////////////////////////////////
+
+func convkv(dst map[string]float64, src map[string]string) error {
+	for k,v := range src {
+		f, e := strconv.ParseFloat(v, 64)
+		if e != nil {
+			return e
+		}
+		dst[k] = f
+	}
+	return nil
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
-func (c *Client)httpReq(path string, v interface{}) error{
-	r := c.newRequest(http.MethodGet, *c.config.RESTHost, path)
+func (c *Client)httpReq(method, path, data string, v interface{}) error{
+	r := c.newRequest(method, *c.config.RESTHost, path)
+	if data != "" {
+		r.body = strings.NewReader(data)
+		defer func() {
+			r.body = nil
+		}()
+	}
 	resp, err := c.doRequest(r)
 	if err != nil {
 		return err
