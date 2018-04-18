@@ -288,9 +288,6 @@ func (c *Client)httpReq(method, path, data string, v interface{}) error{
 	r := c.newRequest(method, *c.config.RESTHost, path)
 	if data != "" {
 		r.body = strings.NewReader(data)
-		defer func() {
-			r.body = nil
-		}()
 	}
 	resp, err := c.doRequest(r)
 	if err != nil {
