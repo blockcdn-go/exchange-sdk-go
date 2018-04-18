@@ -195,6 +195,10 @@ func (c *WSSClient) connect(path string) (string, *websocket.Conn, error) {
 		return u, conn, nil
 	}
 
+	if err == websocket.ErrBadHandshake {
+		return "", nil, err
+	}
+
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
