@@ -5,10 +5,9 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/url"
-	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -47,30 +46,6 @@ func NewWSSClient(config *config.Config) *WSSClient {
 	}
 }
 
-// QueryMarketKLine 查询市场K线图
-func (c *WSSClient) QueryMarketKLine(symbol string, period string) (<-chan []byte, error) {
-	cid, conn, err := c.connect()
-	if err != nil {
-		return nil, err
-	}
-
-	topic := fmt.Sprintf("market.%s.kline.%s", symbol, period)
-	req := struct {
-		Topic string `json:"req"`
-		ID    string `json:"id"`
-	}{topic, ""}
-
-	err = conn.WriteJSON(req)
-	if err != nil {
-		c.Close()
-		return nil, err
-	}
-
-	result := make(chan []byte)
-	go c.start(topic, cid, result)
-	return result, nil
-}
-
 // Close 发起关闭操作
 func (c *WSSClient) Close() {
 	if c.conns == nil || len(c.conns) == 0 {
@@ -85,14 +60,14 @@ func (c *WSSClient) Close() {
 	}
 }
 
-func (c *WSSClient) start(topic, cid string, msgCh chan<- []byte) {
+func (c *WSSClient) start(req interface{}, cid string, msgCh chan<- []byte) {
 	go c.query(cid, msgCh)
 
 	for {
 		select {
 		case cid := <-c.retry:
 			delete(c.conns, cid)
-			c.reconnect(topic, msgCh)
+			c.reconnect(req, msgCh)
 		case <-c.shouldQuit:
 			c.shutdown()
 			return
@@ -100,17 +75,11 @@ func (c *WSSClient) start(topic, cid string, msgCh chan<- []byte) {
 	}
 }
 
-func (c *WSSClient) reconnect(topic string, msgCh chan<- []byte) {
+func (c *WSSClient) reconnect(req interface{}, msgCh chan<- []byte) {
 	cid, conn, err := c.connect()
 	if err != nil {
 		return
 	}
-
-	hostname, _ := os.Hostname()
-	req := struct {
-		Topic string `json:"req"`
-		ID    string `json:"id"`
-	}{topic, hostname}
 
 	err = conn.WriteJSON(req)
 	if err != nil {
@@ -140,12 +109,12 @@ func (c *WSSClient) shutdown() {
 }
 
 func (c *WSSClient) query(cid string, msgCh chan<- []byte) {
-	for {
-		conn, ok := c.conns[cid]
-		if !ok {
-			return
-		}
+	conn, ok := c.conns[cid]
+	if !ok {
+		return
+	}
 
+	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			c.closeMu.Lock()
@@ -206,6 +175,10 @@ func (c *WSSClient) connect() (string, *websocket.Conn, error) {
 		return u, conn, nil
 	}
 
+	if err == websocket.ErrBadHandshake {
+		return "", nil, err
+	}
+
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -222,4 +195,9 @@ func (c *WSSClient) connect() (string, *websocket.Conn, error) {
 			return "", nil, errors.New("Connection is closing")
 		}
 	}
+}
+
+func (c *WSSClient) generateClientID() string {
+	now := time.Now().UnixNano()
+	return strconv.FormatInt(now, 10)
 }
