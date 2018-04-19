@@ -5,6 +5,7 @@ import (
 )
 
 // SubMarketKLine 查询市场K线图
+// period 可选 1min, 5min, 15min, 30min, 60min, 1day, 1mon, 1week, 1year
 func (c *WSSClient) SubMarketKLine(symbol string, period string) (<-chan []byte, error) {
 	cid, conn, err := c.connect()
 	if err != nil {
@@ -29,6 +30,8 @@ func (c *WSSClient) SubMarketKLine(symbol string, period string) (<-chan []byte,
 }
 
 // SubMarketDepth 查询市场深度数据
+// type 可选值：{ step0, step1, step2, step3, step4, step5 } （合并深度0-5）；
+// step0时，不合并深度
 func (c *WSSClient) SubMarketDepth(symbol string, typ string) (<-chan []byte, error) {
 	cid, conn, err := c.connect()
 	if err != nil {

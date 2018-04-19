@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
-	"net/url"
+	//	"net/http"
+	//	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,8 +20,8 @@ func main() {
 
 	cfg := &config.Config{}
 	dialer := websocket.DefaultDialer
-	u, _ := url.Parse("http://127.0.0.1:1087")
-	dialer.Proxy = http.ProxyURL(u)
+	//	u, _ := url.Parse("http://127.0.0.1:1087")
+	//	dialer.Proxy = http.ProxyURL(u)
 
 	cfg.WithWSSDialer(dialer)
 	c := binance.NewWSSClient(cfg)

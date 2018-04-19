@@ -3,10 +3,16 @@ package huobi
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +21,8 @@ import (
 	"github.com/blockcdn-go/exchange-sdk-go/config"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/json-iterator/go/extra"
 )
 
 // WSSClient 是huobi sdk的调用客户端
@@ -200,4 +208,150 @@ func (c *WSSClient) connect() (string, *websocket.Conn, error) {
 func (c *WSSClient) generateClientID() string {
 	now := time.Now().UnixNano()
 	return strconv.FormatInt(now, 10)
+}
+
+// Client 提供火币 API的调用客户端
+type Client struct {
+	config config.Config
+}
+
+// NewClient 创建一个新的client
+func NewClient(config *config.Config) *Client {
+	cfg := defaultConfig()
+	if config != nil {
+		cfg.MergeIn(config)
+	}
+
+	return &Client{config: *cfg}
+}
+
+func (c *Client) doHTTP(method, path string, mapParams map[string]string, out interface{}) error {
+
+	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05")
+
+	mapParams2Sign := make(map[string]string)
+	mapParams2Sign["AccessKeyId"] = *c.config.APIKey
+	mapParams2Sign["SignatureMethod"] = "HmacSHA256"
+	mapParams2Sign["SignatureVersion"] = "2"
+	mapParams2Sign["Timestamp"] = timestamp
+
+	hostName := *c.config.RESTHost
+
+	mapParams2Sign["Signature"] = createSign(mapParams2Sign, method, hostName, path, *c.config.APIKey)
+
+	url := "http://"
+	if *c.config.UseSSL {
+		url = "https://"
+	}
+	url += *c.config.RESTHost + path
+	url += "?" + map2UrlQuery(mapValueEncodeURI(mapParams2Sign))
+	// TODO: sign
+	arg := ""
+	if method == "POST" {
+		bytesParams, _ := json.Marshal(mapParams)
+		arg = string(bytesParams)
+	}
+	req, e := http.NewRequest(method, url, strings.NewReader(arg))
+	if e != nil {
+		return e
+	}
+	if method == "GET" {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	} else {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Accept-Language", "zh-cn")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) "+
+		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36")
+
+	resp, re := c.config.HTTPClient.Do(req)
+	if e != nil {
+		return re
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("请求失败，响应码：%d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	extra.RegisterFuzzyDecoders()
+
+	err = jsoniter.Unmarshal(body, out)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// 构造签名
+// mapParams: 送进来参与签名的参数, Map类型
+// strMethod: 请求的方法 GET, POST......
+// strHostUrl: 请求的主机
+// strRequestPath: 请求的路由路径
+// strSecretKey: 进行签名的密钥
+func createSign(mapParams map[string]string, strMethod, strHostURL, strRequestPath, strSecretKey string) string {
+	// 参数处理, 按API要求, 参数名应按ASCII码进行排序(使用UTF-8编码, 其进行URI编码, 16进制字符必须大写)
+	sortedParams := mapSortByKey(mapParams)
+	encodeParams := mapValueEncodeURI(sortedParams)
+	strParams := map2UrlQuery(encodeParams)
+
+	strPayload := strMethod + "\n" + strHostURL + "\n" + strRequestPath + "\n" + strParams
+
+	key := []byte(strSecretKey)
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(strPayload))
+
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
+// 对Map按着ASCII码进行排序
+// mapValue: 需要进行排序的map
+// return: 排序后的map
+func mapSortByKey(mapValue map[string]string) map[string]string {
+	var keys []string
+	for key := range mapValue {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	mapReturn := make(map[string]string)
+	for _, key := range keys {
+		mapReturn[key] = mapValue[key]
+	}
+
+	return mapReturn
+}
+
+// 对Map的值进行URI编码
+// mapParams: 需要进行URI编码的map
+// return: 编码后的map
+func mapValueEncodeURI(mapValue map[string]string) map[string]string {
+	for key, value := range mapValue {
+		valueEncodeURI := url.QueryEscape(value)
+		mapValue[key] = valueEncodeURI
+	}
+
+	return mapValue
+}
+
+// 将map格式的请求参数转换为字符串格式的
+// mapParams: map格式的参数键值对
+// return: 查询字符串
+func map2UrlQuery(mapParams map[string]string) string {
+	var strParams string
+	for key, value := range mapParams {
+		strParams += (key + "=" + value + "&")
+	}
+
+	if 0 < len(strParams) {
+		strParams = string([]rune(strParams)[:len(strParams)-1])
+	}
+
+	return strParams
 }

@@ -8,7 +8,7 @@ import (
 
 func defaultConfig() *config.Config {
 	cfg := &config.Config{}
-	cfg.WithWSSHost("api.huobipro.com")
+	cfg.WithWSSHost("api.hadax.com")
 	cfg.WithHTTPClient(clean.DefaultPooledClient())
 	cfg.WithWSSDialer(websocket.DefaultDialer)
 	cfg.WithUseSSL(true)
