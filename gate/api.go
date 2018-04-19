@@ -10,84 +10,20 @@ import (
 	"github.com/json-iterator/go/extra"
 )
 
-// MarketListResponse 是MarketList接口的返回值
-type MarketListResponse struct {
-	No          int     `json:"no"`
-	Symbol      string  `json:"symbol"`
-	Name        string  `json:"name"`
-	NameEn      string  `json:"name_en"`
-	NameCn      string  `json:"name_cn"`
-	Pair        string  `json:"pair"`
-	Rate        string  `json:"rate"`
-	VolA        float64 `json:"vol_a"`
-	VolB        string  `json:"vol_b"`
-	CurrA       string  `json:"curr_a"`
-	CurrB       string  `json:"curr_b"`
-	CurrSuffix  string  `json:"curr_suffix"`
-	RatePercent string  `json:"rate_percent"`
-	Trend       string  `json:"trend"`
-	Supply      int64   `json:"supply"`
-	MarketCap   string  `json:"marketcap"`
-}
-
 // MarketList 交易市场详细行情接口
 func (c *Client) MarketList() ([]MarketListResponse, error) {
-	r := c.newRequest(http.MethodGet, *c.config.RESTHost, "/api2/1/marketlist")
-	resp, err := c.doRequest(r)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("请求失败，响应码：%d", resp.StatusCode)
-	}
-
 	var result struct {
 		Result string               `json:"result"`
 		Data   []MarketListResponse `json:"data"`
 	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	e := c.httpReq("GET", "/api2/1/marketlist", nil, &result)
+	if e != nil {
+		return nil, e
 	}
-
-	extra.RegisterFuzzyDecoders()
-
-	err = jsoniter.Unmarshal(body, &result)
-	if err != nil {
-		return nil, err
-	}
-
 	return result.Data, nil
 }
 
-// 获取行情ticker
-/*
- 	baseVolume: 交易量
-    high24hr:24小时最高价
-    highestBid:买方最高价
-    last:最新成交价
-    low24hr:24小时最低价
-    lowestAsk:卖方最低价
-    percentChange:涨跌百分比
-    quoteVolume: 兑换货币交易量
-*/
-
-type TickerResponse struct {
-	Base          string
-	Quote         string
-	BaseVolume    float64 `josn:"baseVolume"`
-	High24hr      float64 `json:"high24hr"`
-	Low24hr       float64 `json:"low24hr"`
-	HighestBid    float64 `json:"highestBid"`
-	LowestAsk     float64 `json:"lowestAsk"`
-	Last          float64 `json:"last"`
-	PercentChange float64 `json:"percentChange"`
-	QuoteVolume   float64 `json:"quoteVolume"`
-}
-
+// TickerInfo 获取行情ticker
 func (c *Client) TickerInfo(base, quote string) (TickerResponse, error) {
 	path := fmt.Sprintf("/api2/1/ticker/%s_%s", base, quote)
 	var result TickerResponse
@@ -97,37 +33,7 @@ func (c *Client) TickerInfo(base, quote string) (TickerResponse, error) {
 	return result, e
 }
 
-// 市场深度
-/*
-
- */
-
-type Depth5 struct {
-	Base      string
-	Quote     string
-	AskPirce1 float64
-	AskPirce2 float64
-	AskPirce3 float64
-	AskPirce4 float64
-	AskPirce5 float64
-	AskSize1  float64
-	AskSize2  float64
-	AskSize3  float64
-	AskSize4  float64
-	AskSize5  float64
-	//
-	BidPrice1 float64
-	BidPrice2 float64
-	BidPrice3 float64
-	BidPrice4 float64
-	BidPrice5 float64
-	BidSize1  float64
-	BidSize2  float64
-	BidSize3  float64
-	BidSize4  float64
-	BidSize5  float64
-}
-
+// DepthInfo ...
 func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 	path := fmt.Sprintf("/api2/1/orderBook/%s_%s", base, quote)
 	t := struct {
@@ -173,12 +79,7 @@ func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 //////////////////////////////////////////////////////////////////////////
 /// 交易类接口
 
-type Balance struct {
-	Available map[string]float64
-	Locked    map[string]float64
-}
-
-// 获取帐号资金余额
+// BalanceInfo 获取帐号资金余额
 func (c *Client) BalanceInfo() (Balance, error) {
 	path := "/api2/1/private/balances"
 	b := struct {
@@ -214,7 +115,7 @@ func (c *Client) BalanceInfo() (Balance, error) {
 	return r, nil
 }
 
-// 获取充值地址
+// DepositAddr 获取充值地址
 func (c *Client) DepositAddr(currency string) (string, error) {
 	path := "/api2/1/private/depositAddress"
 	rsp := struct {
@@ -238,17 +139,7 @@ func (c *Client) DepositAddr(currency string) (string, error) {
 	return rsp.Addr, nil
 }
 
-type DWInfo struct {
-	ID        string `json:"id"`
-	Currency  string `json:"currency"`
-	Address   string `json:"address"`
-	Amount    string `json:"amount"`
-	Txid      string `json:"txid"`
-	Timestamp string `json:"timestamp"`
-	Status    string `json:"status"` //DONE:完成; CANCEL:取消; REQUEST:请求中
-}
-
-// 获取充值提现历史
+// DepositsWithdrawals 获取充值提现历史
 // return1 充值， return2 提现
 func (c *Client) DepositsWithdrawals() ([]DWInfo, []DWInfo, error) {
 	rsp := struct {
@@ -265,6 +156,132 @@ func (c *Client) DepositsWithdrawals() ([]DWInfo, []DWInfo, error) {
 		return nil, nil, fmt.Errorf(rsp.Message)
 	}
 	return rsp.Deposits, rsp.Withdraws, nil
+}
+
+// InsertOrder 下单交易
+// @parm symbol 交易币种对(如ltc_btc,ltc_btc)
+// @parm direction 0 - buy, 1 - sell
+// @parm price 	买卖价格
+// @parm num	买卖币数量
+func (c *Client) InsertOrder(symbol string, direction int, price, num float64) (InsertOrderRsp, error) {
+	path := "/api2/1/private/"
+	if direction == 0 {
+		path += "buy"
+	} else {
+		path += "sell"
+	}
+	arg := struct {
+		CurrencyPair string  `url:"currencyPair"`
+		Rate         float64 `url:"rate"`
+		Amount       float64 `url:"amount"`
+	}{symbol, price, num}
+	r := InsertOrderRsp{Direction: direction}
+	e := c.httpReq("POST", path, arg, &r)
+	return r, e
+}
+
+// CancelOrder 取消订单
+func (c *Client) CancelOrder(symbol, orderNo string) error {
+	arg := struct {
+		OrderNumber  string `url:"orderNumber"`
+		CurrencyPair string `url:"currencyPair"`
+	}{orderNo, symbol}
+
+	r := struct {
+		Result  string `json:"result"`
+		Message string `json:"message"`
+	}{}
+	e := c.httpReq("POST", "/api2/1/private/cancelOrder", arg, &r)
+	if e != nil {
+		return e
+	}
+	if r.Result != "true" {
+		return fmt.Errorf(r.Message)
+	}
+	return nil
+}
+
+// OrderStatusInfo 获取订单状态
+func (c *Client) OrderStatusInfo(symbol, orderNo string) (OrderInfo, error) {
+	arg := struct {
+		OrderNumber  string `url:"orderNumber"`
+		CurrencyPair string `url:"currencyPair"`
+	}{orderNo, symbol}
+	r := struct {
+		Result  string    `json:"result"`
+		Message string    `json:"message"`
+		Order   OrderInfo `json:"order"`
+	}{}
+	e := c.httpReq("POST", "/api2/1/private/getOrder", arg, &r)
+	if e != nil {
+		return OrderInfo{}, e
+	}
+	if r.Result != "true" {
+		return OrderInfo{}, fmt.Errorf(r.Message)
+	}
+	return r.Order, nil
+}
+
+// HangingOrderInfo 获取我的当前挂单列表
+func (c *Client) HangingOrderInfo() ([]HangingOrder, error) {
+	r := struct {
+		Result  string         `json:"result"`
+		Message string         `json:"message"`
+		Code    int            `json:"code"`
+		Orders  []HangingOrder `json:"orders"`
+	}{}
+	e := c.httpReq("POST", "/api2/1/private/openOrders", nil, &r)
+	if e != nil {
+		return nil, e
+	}
+	if r.Result != "true" && r.Code != 0 {
+		return nil, fmt.Errorf(r.Message)
+	}
+	return r.Orders, nil
+}
+
+// MatchInfo 获取我的24小时内成交记录
+func (c *Client) MatchInfo(symbol, orderNo string) ([]Match, error) {
+	arg := struct {
+		OrderNumber  string `url:"orderNumber"`
+		CurrencyPair string `url:"currencyPair"`
+	}{orderNo, symbol}
+
+	r := struct {
+		Result  string  `json:"result"`
+		Message string  `json:"message"`
+		Trades  []Match `json:"trades"`
+	}{}
+	e := c.httpReq("POST", "/api2/1/private/tradeHistory", arg, &r)
+	if e != nil {
+		return nil, e
+	}
+	if r.Result != "true" {
+		return nil, fmt.Errorf(r.Message)
+	}
+	return r.Trades, nil
+}
+
+// Withdraws 提现
+func (c *Client) Withdraws(currency, address string, num float64) error {
+	arg := struct {
+		Currency string  `url:"currency"`
+		Amount   float64 `url:"amount"`
+		Address  string  `url:"address"`
+	}{currency, num, address}
+
+	r := struct {
+		Result  string `json:"result"`
+		Message string `json:"message"`
+	}{}
+	e := c.httpReq("POST", "/api2/1/private/withdraw", arg, &r)
+	if e != nil {
+		return e
+	}
+	if r.Result != "true" {
+		return fmt.Errorf(r.Message)
+	}
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////
