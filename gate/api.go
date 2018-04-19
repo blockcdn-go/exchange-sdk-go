@@ -291,6 +291,8 @@ func (c *Client) httpReq(method, path string, in interface{}, out interface{}) e
 		}
 		r.body = body
 		r.sign = c.sign(params)
+	} else {
+		r.sign = c.sign("")
 	}
 
 	resp, err := c.doRequest(r)
