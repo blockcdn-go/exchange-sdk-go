@@ -83,9 +83,9 @@ func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 func (c *Client) BalanceInfo() (Balance, error) {
 	path := "/api2/1/private/balances"
 	b := struct {
-		Result    string      `json:"result"`
-		Available interface{} `json:"available"`
-		Locked    interface{} `json:"locked"`
+		Result    string            `json:"result"`
+		Available map[string]string `json:"available"`
+		Locked    map[string]string `json:"locked"`
 	}{}
 	e := c.httpReq("POST", path, nil, &b)
 	if e != nil {
@@ -98,19 +98,11 @@ func (c *Client) BalanceInfo() (Balance, error) {
 	r.Available = make(map[string]float64)
 	r.Locked = make(map[string]float64)
 
-	t1, o1 := b.Available.(map[string]string)
-	t2, o2 := b.Locked.(map[string]string)
-	if o1 {
-		fmt.Println("Available cast sucess.")
-		if ce := convkv(r.Available, t1); ce != nil {
-			return Balance{}, ce
-		}
+	if ce := convkv(r.Available, b.Available); ce != nil {
+		return Balance{}, ce
 	}
-	if o2 {
-		fmt.Println("Locked cast success.")
-		if ce := convkv(r.Locked, t2); ce != nil {
-			return Balance{}, ce
-		}
+	if ce := convkv(r.Locked, b.Locked); ce != nil {
+		return Balance{}, ce
 	}
 	return r, nil
 }
@@ -161,7 +153,7 @@ func (c *Client) DepositsWithdrawals() ([]DWInfo, []DWInfo, error) {
 // InsertOrder 下单交易
 // @parm symbol 交易币种对(如ltc_btc,ltc_btc)
 // @parm direction 0 - buy, 1 - sell
-// @parm price 	买卖价格
+// @parm price 	买卖价格 ps: minimum 10 usdt.
 // @parm num	买卖币数量
 func (c *Client) InsertOrder(symbol string, direction int, price, num float64) (InsertOrderRsp, error) {
 	path := "/api2/1/private/"
@@ -181,6 +173,8 @@ func (c *Client) InsertOrder(symbol string, direction int, price, num float64) (
 }
 
 // CancelOrder 取消订单
+// 通过测试，第一个参数对结果没有影响，只要orderno正确就能取消订单，
+// 但是如果第一个参数填入错误的代码将返回错误，但是订单依然被取消了
 func (c *Client) CancelOrder(symbol, orderNo string) error {
 	arg := struct {
 		OrderNumber  string `url:"orderNumber"`
@@ -188,14 +182,27 @@ func (c *Client) CancelOrder(symbol, orderNo string) error {
 	}{orderNo, symbol}
 
 	r := struct {
-		Result  string `json:"result"`
-		Message string `json:"message"`
+		Result  interface{} `json:"result"` // 未按文档说明的类型返回
+		BResult bool        `json:"-"`
+		Code    int         `json:"code"`
+		Message string      `json:"message"`
 	}{}
 	e := c.httpReq("POST", "/api2/1/private/cancelOrder", arg, &r)
 	if e != nil {
 		return e
 	}
-	if r.Result != "true" {
+
+	switch r.Result.(type) {
+	case bool:
+		r.BResult = r.Result.(bool)
+	case string:
+		v := r.Result.(string)
+		r.BResult, _ = strconv.ParseBool(v)
+	default:
+		r.BResult = false
+	}
+
+	if !r.BResult && r.Code != 0 {
 		return fmt.Errorf(r.Message)
 	}
 	return nil
@@ -327,6 +334,7 @@ func (c *Client) httpReq(method, path string, in interface{}, out interface{}) e
 		return err
 	}
 
+	fmt.Printf("http message: %s\n", string(body))
 	extra.RegisterFuzzyDecoders()
 
 	err = jsoniter.Unmarshal(body, out)

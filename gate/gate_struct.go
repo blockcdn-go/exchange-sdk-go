@@ -1,3 +1,8 @@
+/*
+gate 返回数据的结构体
+有可能存在一些字段和gate文档上写的不一样，如果以后需要其他的数据需要对比返回的json字符串
+*/
+
 package gate
 
 // MarketListResponse 是MarketList接口的返回值
@@ -92,6 +97,7 @@ type InsertOrderRsp struct {
 
 // OrderInfo ...
 type OrderInfo struct {
+	OrderNo     string  `json:"orderNumber"`   //
 	Status      string  `json:"status"`        // 订单状态 cancelled已取消 done已完成
 	Symbol      string  `json:"currencyPair"`  //  交易对
 	Dircetion   string  `json:"type"`          //买卖类型 sell卖出, buy买入
