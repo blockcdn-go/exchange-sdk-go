@@ -11,12 +11,14 @@ import (
 	"strings"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
+	"github.com/gotoxu/log/core"
 	"github.com/gotoxu/query"
 )
 
 // Client 提供gate API的调用客户端
 type Client struct {
 	config config.Config
+	logger core.Logger
 }
 
 // NewClient 创建一个新的client
@@ -27,6 +29,29 @@ func NewClient(config *config.Config) *Client {
 	}
 
 	return &Client{config: *cfg}
+}
+
+// SetLogger 设置日志器
+func (c *Client) SetLogger(logger core.Logger) {
+	c.logger = logger
+}
+
+func (c *Client) log(level core.Level, v ...interface{}) {
+	if c.logger != nil {
+		c.logger.Log(level, v...)
+	}
+}
+
+func (c *Client) logf(level core.Level, format string, v ...interface{}) {
+	if c.logger != nil {
+		c.logger.Logf(level, format, v...)
+	}
+}
+
+func (c *Client) logln(level core.Level, v ...interface{}) {
+	if c.logger != nil {
+		c.logger.Logln(level, v...)
+	}
 }
 
 func (c *Client) newRequest(method, endpoint, path string) *request {

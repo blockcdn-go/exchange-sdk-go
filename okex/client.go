@@ -13,12 +13,14 @@ import (
 	"github.com/blockcdn-go/exchange-sdk-go/config"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/gotoxu/log/core"
 )
 
 // WSSClient 提供okex API调用的客户端
 type WSSClient struct {
 	config config.Config
 	conns  map[string]*websocket.Conn
+	logger core.Logger
 
 	closed  bool
 	closeMu sync.Mutex
@@ -45,6 +47,11 @@ func NewWSSClient(config *config.Config) *WSSClient {
 	}
 }
 
+// SetLogger 设置日志器
+func (c *WSSClient) SetLogger(logger core.Logger) {
+	c.logger = logger
+}
+
 // QuerySpot 负责订阅现货行情数据
 func (c *WSSClient) QuerySpot() (<-chan []byte, error) {
 	cid, conn, err := c.connect("/websocket")
@@ -62,6 +69,24 @@ func (c *WSSClient) QuerySpot() (<-chan []byte, error) {
 	go c.start(cid, "/websocket", result)
 
 	return result, nil
+}
+
+func (c *WSSClient) log(level core.Level, v ...interface{}) {
+	if c.logger != nil {
+		c.logger.Log(level, v...)
+	}
+}
+
+func (c *WSSClient) logf(level core.Level, format string, v ...interface{}) {
+	if c.logger != nil {
+		c.logger.Logf(level, format, v...)
+	}
+}
+
+func (c *WSSClient) logln(level core.Level, v ...interface{}) {
+	if c.logger != nil {
+		c.logger.Logln(level, v...)
+	}
 }
 
 func (c *WSSClient) subscribeSpot(conn *websocket.Conn) error {

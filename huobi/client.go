@@ -20,6 +20,7 @@ import (
 	"github.com/blockcdn-go/exchange-sdk-go/config"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/gotoxu/log/core"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
 )
@@ -28,6 +29,7 @@ import (
 type WSSClient struct {
 	config config.Config
 	conns  map[string]*websocket.Conn
+	logger core.Logger
 
 	closed  bool
 	closeMu sync.Mutex
@@ -50,6 +52,29 @@ func NewWSSClient(config *config.Config) *WSSClient {
 		shouldQuit: make(chan struct{}),
 		done:       make(chan struct{}),
 		retry:      make(chan string),
+	}
+}
+
+// SetLogger 设置日志器
+func (c *WSSClient) SetLogger(logger core.Logger) {
+	c.logger = logger
+}
+
+func (c *WSSClient) log(level core.Level, v ...interface{}) {
+	if c.logger != nil {
+		c.logger.Log(level, v...)
+	}
+}
+
+func (c *WSSClient) logf(level core.Level, format string, v ...interface{}) {
+	if c.logger != nil {
+		c.logger.Logf(level, format, v...)
+	}
+}
+
+func (c *WSSClient) logln(level core.Level, v ...interface{}) {
+	if c.logger != nil {
+		c.logger.Logln(level, v...)
 	}
 }
 
