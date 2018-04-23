@@ -66,8 +66,8 @@ func if2map(i interface{}) map[string]string {
 		switch v.Field(idx).Type().Kind() {
 		case reflect.String:
 			val := v.Field(idx).String()
-			if contanis(ops, "omitempty") && v.Field(idx) ==
-				reflect.Zero(reflect.TypeOf(v.Field(idx))) {
+			eqz := v.Field(idx).Interface() == reflect.Zero(reflect.TypeOf(v.Field(idx).Interface())).Interface()
+			if contanis(ops, "omitempty") && eqz {
 				continue
 			}
 			r[name] = val

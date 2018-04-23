@@ -258,7 +258,9 @@ func (c *Client) doHTTP(method, path string, mapParams map[string]string, out in
 	mapParams2Sign["SignatureMethod"] = "HmacSHA256"
 	mapParams2Sign["SignatureVersion"] = "2"
 	mapParams2Sign["Timestamp"] = timestamp
-
+	for k, v := range mapParams {
+		mapParams2Sign[k] = v
+	}
 	hostName := *c.config.RESTHost
 
 	mapParams2Sign["Signature"] = createSign(mapParams2Sign, method, hostName,

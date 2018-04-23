@@ -27,7 +27,7 @@ func main() {
 
 	cfg.WithWSSDialer(dialer)
 	c := binance.NewWSSClient(cfg)
-	msgCh, err := c.KlineCandlestick("bnbbtc", "113231")
+	msgCh, err := c.KlineCandlestick("btcusdt", "1min")
 	if err != nil {
 		log.Fatal("read error: ", err)
 	}

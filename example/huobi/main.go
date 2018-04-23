@@ -27,12 +27,31 @@ func main() {
 	r1, e1 := c.GetAllAccountID()
 	fmt.Println("GetAllAccountID: ", r1, e1)
 
-	r2, e2 := c.BalanceInfo(true, 3270437)
-	fmt.Println("BalanceInfo: ", r2, e2)
+	//	r2, e2 := c.BalanceInfo(false, 3270437)
+	//	fmt.Println("BalanceInfo: ", r2, e2)
+	/*
+		req := huobi.InsertOrderReq{
+			AccountID: "3270437",
+			Amount:    "1",
+			Price:     "",
+			Source:    "api",
+			Symbol:    "eosusdt",
+			OrderType: "buy-market"}
+		r3, e3 := c.InsertOrder(false, req)
+		fmt.Println("InsertOrder: ", r3, e3)
+	*/
+	//	r3, e3 := c.GetOrders("eosusdt", "canceled")
+	//	fmt.Println("GetOrders: ", r3, e3)
 
-	req := huobi.InsertOrderReq{"0", "1", "2", "3", "4", "5"}
-	r3, e3 := c.InsertOrder(false, req)
-	fmt.Println("InsertOrder: ", r3, e3)
+	//	time.Sleep(5 * time.Second)
+	//	r4, e4 := c.GetOrderDetail(r3)
+	//	fmt.Println("GetOrderDetail: ", r4, e4)
+
+	//	r5 := c.CancelOrder(r3)
+	//	fmt.Println("CancelOrder: ", r5)
+
+	r6, e6 := c.GetMatchDetail("3640838737")
+	fmt.Println("GetMatchDetail: ", r6, e6)
 	/*
 		cfg.WithWSSDialer(dialer)
 		wss := huobi.NewWSSClient(cfg)
