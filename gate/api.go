@@ -37,8 +37,8 @@ func (c *Client) TickerInfo(base, quote string) (TickerResponse, error) {
 func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 	path := fmt.Sprintf("/api2/1/orderBook/%s_%s", base, quote)
 	t := struct {
-		Asks [][]float64 `json:"asks"`
-		Bids [][]float64 `json:"bids"`
+		Asks [][]float64 `json:"asks"` //卖方深度
+		Bids [][]float64 `json:"bids"` //买方深度
 	}{}
 
 	e := c.httpReq("GET", path, nil, &t)
@@ -51,28 +51,16 @@ func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 	var r Depth5
 	r.Base = base
 	r.Quote = quote
-
-	r.AskPirce1 = t.Asks[0][0]
-	r.AskPirce2 = t.Asks[1][0]
-	r.AskPirce3 = t.Asks[2][0]
-	r.AskPirce4 = t.Asks[3][0]
-	r.AskPirce5 = t.Asks[4][0]
-	r.AskSize1 = t.Asks[0][1]
-	r.AskSize2 = t.Asks[1][1]
-	r.AskSize3 = t.Asks[2][1]
-	r.AskSize4 = t.Asks[3][1]
-	r.AskSize5 = t.Asks[4][1]
-	//
-	r.BidPrice1 = t.Bids[0][0]
-	r.BidPrice2 = t.Bids[1][0]
-	r.BidPrice3 = t.Bids[2][0]
-	r.BidPrice4 = t.Bids[3][0]
-	r.BidPrice5 = t.Bids[4][0]
-	r.BidSize1 = t.Bids[0][1]
-	r.BidSize2 = t.Bids[1][1]
-	r.BidSize3 = t.Bids[2][1]
-	r.BidSize4 = t.Bids[3][1]
-	r.BidSize5 = t.Bids[4][1]
+	r.Asks = make([]PSpair, 0, 5)
+	r.Bids = make([]PSpair, 0, 5)
+	// 卖 倒序
+	for end := len(t.Asks); end > len(t.Asks)-5; end-- {
+		r.Asks = append(r.Asks, PSpair{t.Asks[end-1][0], t.Asks[end-1][1]})
+	}
+	// 买
+	for idx := range t.Bids {
+		r.Bids = append(r.Bids, PSpair{t.Bids[idx][0], t.Bids[idx][1]})
+	}
 	return r, nil
 }
 

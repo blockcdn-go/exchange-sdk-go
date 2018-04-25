@@ -39,31 +39,18 @@ type TickerResponse struct {
 	QuoteVolume   float64 `json:"quoteVolume"`   // 兑换货币交易量
 }
 
+// PSpair 深度行情的价格和手数对
+type PSpair struct {
+	Price float64
+	Size  float64
+}
+
 // Depth5 ...
 type Depth5 struct {
-	Base      string
-	Quote     string
-	AskPirce1 float64
-	AskPirce2 float64
-	AskPirce3 float64
-	AskPirce4 float64
-	AskPirce5 float64
-	AskSize1  float64
-	AskSize2  float64
-	AskSize3  float64
-	AskSize4  float64
-	AskSize5  float64
-	//
-	BidPrice1 float64
-	BidPrice2 float64
-	BidPrice3 float64
-	BidPrice4 float64
-	BidPrice5 float64
-	BidSize1  float64
-	BidSize2  float64
-	BidSize3  float64
-	BidSize4  float64
-	BidSize5  float64
+	Base  string
+	Quote string
+	Asks  []PSpair // 卖方
+	Bids  []PSpair // 买方
 }
 
 // Balance ...
