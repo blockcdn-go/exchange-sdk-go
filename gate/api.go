@@ -57,9 +57,10 @@ func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 	for end := len(t.Asks); end > len(t.Asks)-5; end-- {
 		r.Asks = append(r.Asks, PSpair{t.Asks[end-1][0], t.Asks[end-1][1]})
 	}
+
 	// 买
-	for idx := range t.Bids {
-		r.Bids = append(r.Bids, PSpair{t.Bids[idx][0], t.Bids[idx][1]})
+	for i := 0; i < 5; i++ {
+		r.Bids = append(r.Bids, PSpair{t.Bids[i][0], t.Bids[i][1]})
 	}
 	return r, nil
 }
