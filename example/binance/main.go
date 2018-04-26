@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/binance-exchange/go-binance"
+	"github.com/blockcdn-go/exchange-sdk-go/binance"
 )
 
 func main() {
