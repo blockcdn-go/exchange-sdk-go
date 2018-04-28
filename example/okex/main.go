@@ -15,17 +15,20 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, syscall.SIGTERM, syscall.SIGINT)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	go wss(ctx, "1")
-	go wss(ctx, "2")
+	c := okex.NewClient(nil)
+	tk, e := c.Login("18200202750", "huang123")
+	fmt.Println("Login: ", tk, e)
+	// ctx, cancel := context.WithCancel(context.Background())
+	// go wss(ctx, "1")
+	// go wss(ctx, "2")
 
-	for {
-		select {
-		case <-interrupt:
-			cancel()
-			return
-		}
-	}
+	// for {
+	// 	select {
+	// 	case <-interrupt:
+	// 		cancel()
+	// 		return
+	// 	}
+	// }
 }
 
 func wss(ctx context.Context, id string) {

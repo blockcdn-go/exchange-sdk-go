@@ -427,12 +427,12 @@ func (as *apiService) exitHandler(c *websocket.Conn, done chan struct{}) {
 
 	for {
 		select {
-		case t := <-ticker.C:
-			err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
-			if err != nil {
-				log.Println("wsWrite", err)
-				return
-			}
+		//case t := <-ticker.C:
+		// err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
+		// if err != nil {
+		// 	log.Println("wsWrite", err)
+		// 	return
+		// }
 		case <-as.Ctx.Done():
 			select {
 			case <-done:

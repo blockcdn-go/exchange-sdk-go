@@ -3,8 +3,11 @@ package okex
 import (
 	"bytes"
 	"compress/flate"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -14,6 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/gotoxu/log/core"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/json-iterator/go/extra"
 )
 
 // WSSClient 提供okex API调用的客户端
@@ -240,4 +245,73 @@ func (c *WSSClient) connect(path string) (string, *websocket.Conn, error) {
 			return "", nil, errors.New("Connection is closing")
 		}
 	}
+}
+
+// Client ...
+type Client struct {
+	config config.Config
+}
+
+// NewClient 创建一个新的client
+func NewClient(config *config.Config) *Client {
+	cfg := defaultConfig()
+	if config != nil {
+		cfg.MergeIn(config)
+	}
+
+	return &Client{config: *cfg}
+}
+
+func (c *Client) doHTTP(method, path string,
+	reqarg interface{}, out interface{}, extraheader map[string]string) error {
+	url := "http://"
+	if *c.config.UseSSL {
+		url = "https://"
+	}
+	url += *c.config.RESTHost + path
+
+	arg := ""
+	if method == "POST" {
+		bytesParams, _ := json.Marshal(reqarg)
+		arg = string(bytesParams)
+	}
+	req, e := http.NewRequest(method, url, strings.NewReader(arg))
+	if e != nil {
+		return e
+	}
+	if method == "GET" {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	} else {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Accept-Language", "zh-cn")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) "+
+		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36")
+	for k, v := range extraheader {
+		req.Header.Set(k, v)
+	}
+	resp, re := c.config.HTTPClient.Do(req)
+	if e != nil {
+		return re
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("请求失败，响应码：%d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("okex http message:%s\n", string(body))
+	extra.RegisterFuzzyDecoders()
+
+	err = jsoniter.Unmarshal(body, out)
+	if err != nil {
+		return err
+	}
+	return nil
 }

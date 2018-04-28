@@ -1,6 +1,7 @@
 package okex
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/blockcdn-go/exchange-sdk-go/clean"
@@ -17,5 +18,10 @@ func defaultConfig() *config.Config {
 	cfg.WithUseSSL(true)
 	cfg.WithPingDuration(60 * time.Second)
 
+	//
+	cfg.WithRESTHost("www.okex.cn")
+	cfg.WithUseSSL(true)
+	transport := clean.DefaultPooledTransport()
+	cfg.WithHTTPClient(&http.Client{Transport: transport})
 	return cfg
 }

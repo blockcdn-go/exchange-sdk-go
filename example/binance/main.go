@@ -19,8 +19,8 @@ func main() {
 	binanceService := binance.NewAPIService(
 		nil,
 		"https://www.binance.com",
-		"",
-		"",
+		"X4gV04iX86rr4a0urODBhQrGs0us2MTF5VyELvqE8uGvzM7LtXqg3ckqsevoZKRe",
+		"1XlcmtmbGRMmqdDoxeRuzkTYXJZECu1OOF4q1toanmxWFVPjWOJPxPZeDj2jvpRS",
 		pxy)
 	b := binance.NewBinance(binanceService)
 
@@ -28,35 +28,34 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	kech, done, err := b.TradeWebsocket(binance.TradeWebsocketRequest{
-		Symbol: "BNBBTC",
+		Symbol: "BTCUSDT",
 	})
 	if err != nil {
 		panic(err)
 	}
-	depth, _, _ := b.DepthWebsocket(binance.DepthWebsocketRequest{Symbol: "btcusdt"})
+	depth, _, _ := b.DepthWebsocket(binance.DepthWebsocketRequest{Symbol: "BTCUSDT"})
 	go func() {
 		for {
 			select {
 			case ke := <-kech:
-				fmt.Printf("%#v\n", ke)
+				fmt.Printf("%+v\n", ke)
 			case d := <-depth:
-				fmt.Printf("%#v\n", d)
+				fmt.Printf("%+v\n", d)
 			case <-done:
 				break
 			}
 		}
 	}()
 
-	/*
-		fmt.Println("waiting for interrupt")
-		<-interrupt
-		fmt.Println("canceling context")
-		cancelCtx()
-		fmt.Println("waiting for signal")
-		<-done
-		fmt.Println("exit")
-		return
-	*/
+	fmt.Println("waiting for interrupt")
+	<-interrupt
+	fmt.Println("canceling context")
+
+	fmt.Println("waiting for signal")
+	<-done
+	fmt.Println("exit")
+	return
+
 	kl, err := b.Klines(binance.KlinesRequest{
 		Symbol:   "BNBETH",
 		Interval: binance.Hour,
