@@ -16,24 +16,23 @@ func main() {
 
 	//ctx, _ := context.WithCancel(context.Background())
 	// use second return value for cancelling request
-	binanceService := binance.NewAPIService(
+	b := binance.NewAPIService(
 		nil,
 		"https://www.binance.com",
 		"X4gV04iX86rr4a0urODBhQrGs0us2MTF5VyELvqE8uGvzM7LtXqg3ckqsevoZKRe",
 		"1XlcmtmbGRMmqdDoxeRuzkTYXJZECu1OOF4q1toanmxWFVPjWOJPxPZeDj2jvpRS",
 		pxy)
-	b := binance.NewBinance(binanceService)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	kech, done, err := b.TradeWebsocket(binance.TradeWebsocketRequest{
-		Symbol: "BTCUSDT",
-	})
+	kech, done, err := b.TradeWebsocket("BTCUSDT")
 	if err != nil {
 		panic(err)
 	}
-	depth, _, _ := b.DepthWebsocket(binance.DepthWebsocketRequest{Symbol: "BTCUSDT"})
+	depth, _, _ := b.DepthWebsocket("BTCUSDT")
+
+	b.TickerWebsocket("BTCUSDT")
 	go func() {
 		for {
 			select {

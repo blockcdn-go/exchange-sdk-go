@@ -11,8 +11,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (as *apiService) DepthWebsocket(dwr DepthWebsocketRequest) (chan *DepthEvent, chan struct{}, error) {
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@depth", strings.ToLower(dwr.Symbol))
+func (as *apiService) DepthWebsocket(symbol string) (chan *DepthEvent, chan struct{}, error) {
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@depth", strings.ToLower(symbol))
 	dial := websocket.DefaultDialer
 	if as.proxy != nil {
 		dial.Proxy = http.ProxyURL(as.proxy)
@@ -89,8 +89,8 @@ func (as *apiService) DepthWebsocket(dwr DepthWebsocketRequest) (chan *DepthEven
 	return dech, done, nil
 }
 
-func (as *apiService) KlineWebsocket(kwr KlineWebsocketRequest) (chan *KlineEvent, chan struct{}, error) {
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@kline_%s", strings.ToLower(kwr.Symbol), string(kwr.Interval))
+func (as *apiService) KlineWebsocket(symbol string, intr Interval) (chan *KlineEvent, chan struct{}, error) {
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@kline_%s", strings.ToLower(symbol), string(intr))
 	dial := websocket.DefaultDialer
 	if as.proxy != nil {
 		dial.Proxy = http.ProxyURL(as.proxy)
@@ -233,8 +233,8 @@ func (as *apiService) KlineWebsocket(kwr KlineWebsocketRequest) (chan *KlineEven
 	return kech, done, nil
 }
 
-func (as *apiService) TradeWebsocket(twr TradeWebsocketRequest) (chan *AggTradeEvent, chan struct{}, error) {
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@aggTrade", strings.ToLower(twr.Symbol))
+func (as *apiService) TradeWebsocket(symbol string) (chan *AggTradeEvent, chan struct{}, error) {
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@aggTrade", strings.ToLower(symbol))
 	dial := websocket.DefaultDialer
 	if as.proxy != nil {
 		dial.Proxy = http.ProxyURL(as.proxy)
@@ -322,6 +322,40 @@ func (as *apiService) TradeWebsocket(twr TradeWebsocketRequest) (chan *AggTradeE
 
 	go as.exitHandler(c, done)
 	return aggtech, done, nil
+}
+
+func (as *apiService) TickerWebsocket(symbol string) (chan *Ticker24, chan struct{}, error) {
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@ticker", strings.ToLower(symbol))
+	dial := websocket.DefaultDialer
+	if as.proxy != nil {
+		dial.Proxy = http.ProxyURL(as.proxy)
+	}
+	c, _, err := dial.Dial(url, nil)
+	if err != nil {
+		log.Fatal("dial:", err)
+	}
+
+	done := make(chan struct{})
+	tk := make(chan *Ticker24)
+	go func() {
+		defer c.Close()
+		for {
+			select {
+			case <-as.Ctx.Done():
+				log.Println("closing reader ", url)
+				return
+			default:
+				_, message, err := c.ReadMessage()
+				if err != nil {
+					log.Println("wsRead ", err, url)
+					return
+				}
+				fmt.Println("ticker:", string(message))
+			}
+		}
+	}()
+
+	return tk, done, nil
 }
 
 func (as *apiService) UserDataWebsocket(urwr UserDataWebsocketRequest) (chan *AccountEvent, chan struct{}, error) {
