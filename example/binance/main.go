@@ -32,7 +32,7 @@ func main() {
 	}
 	depth, _, _ := b.DepthWebsocket("BTCUSDT")
 
-	b.TickerWebsocket("BTCUSDT")
+	tk, _, _ := b.TickerWebsocket("BTCUSDT")
 	go func() {
 		for {
 			select {
@@ -42,6 +42,8 @@ func main() {
 				fmt.Printf("%+v\n", d)
 			case <-done:
 				break
+			case t := <-tk:
+				fmt.Printf("%+v\n", t)
 			}
 		}
 	}()

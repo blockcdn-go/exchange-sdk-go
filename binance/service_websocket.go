@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -350,7 +351,102 @@ func (as *apiService) TickerWebsocket(symbol string) (chan *Ticker24, chan struc
 					log.Println("wsRead ", err, url)
 					return
 				}
-				fmt.Println("ticker:", string(message))
+				rawTicker24 := struct {
+					PriceChange        string  `json:"p"`
+					PriceChangePercent string  `json:"P"`
+					WeightedAvgPrice   string  `json:"w"`
+					PrevClosePrice     string  `json:"x"`
+					LastPrice          string  `json:"c"`
+					BidPrice           string  `json:"b"`
+					AskPrice           string  `json:"a"`
+					OpenPrice          string  `json:"o"`
+					HighPrice          string  `json:"h"`
+					LowPrice           string  `json:"l"`
+					Volume             string  `json:"v"`
+					OpenTime           float64 `json:"O"`
+					CloseTime          float64 `json:"C"`
+					FirstID            int     `json:"F"`
+					LastID             int     `json:"L"`
+					Count              int     `json:"n"`
+				}{}
+				if err := json.Unmarshal(message, &rawTicker24); err != nil {
+					log.Println("wsUnmarshal", err, "body", string(message))
+					continue
+				}
+
+				//fmt.Println("ticker:", string(message))
+
+				pc, err := strconv.ParseFloat(rawTicker24.PriceChange, 64)
+				if err != nil {
+					continue
+				}
+				pcPercent, err := strconv.ParseFloat(rawTicker24.PriceChangePercent, 64)
+				if err != nil {
+					continue
+				}
+				wap, err := strconv.ParseFloat(rawTicker24.WeightedAvgPrice, 64)
+				if err != nil {
+					continue
+				}
+				pcp, err := strconv.ParseFloat(rawTicker24.PrevClosePrice, 64)
+				if err != nil {
+					continue
+				}
+				lastPrice, err := strconv.ParseFloat(rawTicker24.LastPrice, 64)
+				if err != nil {
+					continue
+				}
+				bp, err := strconv.ParseFloat(rawTicker24.BidPrice, 64)
+				if err != nil {
+					continue
+				}
+				ap, err := strconv.ParseFloat(rawTicker24.AskPrice, 64)
+				if err != nil {
+					continue
+				}
+				op, err := strconv.ParseFloat(rawTicker24.OpenPrice, 64)
+				if err != nil {
+					continue
+				}
+				hp, err := strconv.ParseFloat(rawTicker24.HighPrice, 64)
+				if err != nil {
+					continue
+				}
+				lowPrice, err := strconv.ParseFloat(rawTicker24.LowPrice, 64)
+				if err != nil {
+					continue
+				}
+				vol, err := strconv.ParseFloat(rawTicker24.Volume, 64)
+				if err != nil {
+					continue
+				}
+				ot, err := timeFromUnixTimestampFloat(rawTicker24.OpenTime)
+				if err != nil {
+					continue
+				}
+				ct, err := timeFromUnixTimestampFloat(rawTicker24.CloseTime)
+				if err != nil {
+					continue
+				}
+				t24 := &Ticker24{
+					PriceChange:        pc,
+					PriceChangePercent: pcPercent,
+					WeightedAvgPrice:   wap,
+					PrevClosePrice:     pcp,
+					LastPrice:          lastPrice,
+					BidPrice:           bp,
+					AskPrice:           ap,
+					OpenPrice:          op,
+					HighPrice:          hp,
+					LowPrice:           lowPrice,
+					Volume:             vol,
+					OpenTime:           ot,
+					CloseTime:          ct,
+					FirstID:            rawTicker24.FirstID,
+					LastID:             rawTicker24.LastID,
+					Count:              rawTicker24.Count,
+				}
+				tk <- t24
 			}
 		}
 	}()
