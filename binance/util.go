@@ -62,7 +62,7 @@ func recvWindow(d time.Duration) int64 {
 
 func (as *apiService) handleError(textRes []byte) error {
 	err := &Error{}
-	log.Println("errorResponse", textRes)
+	log.Println("errorResponse:", string(textRes))
 	if err := json.Unmarshal(textRes, err); err != nil {
 		return warpError(err, "error unmarshal failed")
 	}

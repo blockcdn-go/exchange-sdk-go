@@ -545,8 +545,8 @@ func (as *apiService) Ticker24Websocket() (chan *Ticker24, error) {
 	return tk, nil
 }
 
-func (as *apiService) UserDataWebsocket(urwr UserDataWebsocketRequest) (chan *AccountEvent, error) {
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s", urwr.ListenKey)
+func (as *apiService) UserDataWebsocket(listenKey string) (chan *AccountEvent, error) {
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s", listenKey)
 	dial := websocket.DefaultDialer
 	if as.proxy != nil {
 		dial.Proxy = http.ProxyURL(as.proxy)

@@ -2,7 +2,9 @@ package binance
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -56,18 +58,18 @@ type Service interface {
 	WithdrawHistory(hr HistoryRequest) ([]*Withdrawal, error)
 
 	// StartUserDataStream starts stream and returns Stream with ListenKey.
-	StartUserDataStream() (*Stream, error)
+	StartUserDataStream() (string, error)
 	// KeepAliveUserDataStream prolongs stream livespan.
-	KeepAliveUserDataStream(s *Stream) error
+	KeepAliveUserDataStream(listenKey string) error
 	// CloseUserDataStream closes opened stream.
-	CloseUserDataStream(s *Stream) error
+	CloseUserDataStream(listenKey string) error
 
 	DepthWebsocket(symbol string) (chan *DepthEvent, error)
 	KlineWebsocket(symbol string, intr Interval) (chan *KlineEvent, error)
 	TradeWebsocket(symbol string) (chan *AggTradeEvent, error)
 	TickerWebsocket(symbol string) (chan *Ticker24, error)
 	Ticker24Websocket() (chan *Ticker24, error)
-	UserDataWebsocket(udwr UserDataWebsocketRequest) (chan *AccountEvent, error)
+	UserDataWebsocket(listenKey string) (chan *AccountEvent, error)
 }
 
 type apiService struct {
@@ -100,8 +102,8 @@ func NewAPIService(ctx context.Context, url, apiKey, apiSec string, pxy *url.URL
 	}
 }
 
-func (as *apiService) request(method string, endpoint string, params map[string]string,
-	apiKey bool, sign bool) (*http.Response, error) {
+func (as *apiService) request(method string, path string, params map[string]string,
+	rsp interface{}, apiKey bool, sign bool) error {
 	transport := &http.Transport{}
 	if as.proxy != nil {
 		transport.Proxy = http.ProxyURL(as.proxy)
@@ -110,10 +112,10 @@ func (as *apiService) request(method string, endpoint string, params map[string]
 		Transport: transport,
 	}
 
-	url := fmt.Sprintf("%s/%s", as.URL, endpoint)
+	url := fmt.Sprintf("%s/%s", as.URL, path)
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	req.WithContext(as.Ctx)
 
@@ -133,7 +135,21 @@ func (as *apiService) request(method string, endpoint string, params map[string]
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return resp, nil
+
+	defer resp.Body.Close()
+	textRes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return warpError(err, "unable to read response from allOrders.get")
+	}
+	fmt.Println("binance http msg:", string(textRes))
+	if resp.StatusCode != 200 {
+		return as.handleError(textRes)
+	}
+	if err := json.Unmarshal(textRes, rsp); err != nil {
+		return warpError(err, "allOrders unmarshal failed")
+	}
+
+	return nil
 }

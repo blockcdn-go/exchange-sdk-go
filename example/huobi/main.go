@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	//	"net/http"
 	//	"net/url"
 	"os"
@@ -19,10 +21,19 @@ func main() {
 	//dialer := websocket.DefaultDialer
 	//	u, _ := url.Parse("http://127.0.0.1:8118")
 	//	dialer.Proxy = http.ProxyURL(u)
+	f, _ := os.Open("../cfg.json")
+	js, _ := ioutil.ReadAll(f)
+	cjs := struct {
+		Huobi struct {
+			APIKey string
+			APISec string
+		}
+	}{}
+	json.Unmarshal(js, &cjs)
 
 	cfg := &config.Config{}
-	cfg.WithAPIKey("c4299337-78f7c704-96e370ad-9f8fa")
-	cfg.WithSecret("dc442c61-f6cb0dac-14091e27-4b955")
+	cfg.WithAPIKey(cjs.Huobi.APIKey)
+	cfg.WithSecret(cjs.Huobi.APISec)
 	c := huobi.NewClient(cfg)
 	r1, e1 := c.GetAllAccountID()
 	fmt.Println("GetAllAccountID: ", r1, e1)

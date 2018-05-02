@@ -1,9 +1,8 @@
 package binance
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"strconv"
+	"time"
 )
 
 type rawExecutedOrder struct {
@@ -28,48 +27,32 @@ func (as *apiService) NewOrder(or NewOrderRequest) (*ProcessedOrder, error) {
 	params["side"] = string(or.Side)
 	params["type"] = string(or.Type)
 	params["timeInForce"] = string(or.TimeInForce)
-	params["quantity"] = strconv.FormatFloat(or.Quantity, 'f', 10, 64)
-	params["price"] = strconv.FormatFloat(or.Price, 'f', 10, 64)
+	params["quantity"] = strconv.FormatFloat(or.Quantity, 'f', -1, 64)
+	params["price"] = strconv.FormatFloat(or.Price, 'f', -1, 64)
 	params["timestamp"] = strconv.FormatInt(unixMillis(or.Timestamp), 10)
 	if or.NewClientOrderID != "" {
 		params["newClientOrderId"] = or.NewClientOrderID
 	}
 	if or.StopPrice != 0 {
-		params["stopPrice"] = strconv.FormatFloat(or.StopPrice, 'f', 10, 64)
+		params["stopPrice"] = strconv.FormatFloat(or.StopPrice, 'f', -1, 64)
 	}
 	if or.IcebergQty != 0 {
-		params["icebergQty"] = strconv.FormatFloat(or.IcebergQty, 'f', 10, 64)
+		params["icebergQty"] = strconv.FormatFloat(or.IcebergQty, 'f', -1, 64)
 	}
-
-	res, err := as.request("POST", "api/v3/order", params, true, true)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from Ticker/24hr")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
 	rawOrder := struct {
 		Symbol        string  `json:"symbol"`
 		OrderID       int64   `json:"orderId"`
 		ClientOrderID string  `json:"clientOrderId"`
 		TransactTime  float64 `json:"transactTime"`
 	}{}
-	if err := json.Unmarshal(textRes, &rawOrder); err != nil {
-		return nil, warpError(err, "rawOrder unmarshal failed")
+	err := as.request("POST", "api/v3/order", params, &rawOrder, true, true)
+	if err != nil {
+		return nil, err
 	}
-
 	t, err := timeFromUnixTimestampFloat(rawOrder.TransactTime)
 	if err != nil {
 		return nil, err
 	}
-
 	return &ProcessedOrder{
 		Symbol:        rawOrder.Symbol,
 		OrderID:       rawOrder.OrderID,
@@ -84,31 +67,22 @@ func (as *apiService) NewOrderTest(or NewOrderRequest) error {
 	params["side"] = string(or.Side)
 	params["type"] = string(or.Type)
 	params["timeInForce"] = string(or.TimeInForce)
-	params["quantity"] = strconv.FormatFloat(or.Quantity, 'f', 10, 64)
-	params["price"] = strconv.FormatFloat(or.Price, 'f', 10, 64)
+	params["quantity"] = strconv.FormatFloat(or.Quantity, 'f', -1, 64)
+	params["price"] = strconv.FormatFloat(or.Price, 'f', -1, 64)
 	params["timestamp"] = strconv.FormatInt(unixMillis(or.Timestamp), 10)
 	if or.NewClientOrderID != "" {
 		params["newClientOrderId"] = or.NewClientOrderID
 	}
 	if or.StopPrice != 0 {
-		params["stopPrice"] = strconv.FormatFloat(or.StopPrice, 'f', 10, 64)
+		params["stopPrice"] = strconv.FormatFloat(or.StopPrice, 'f', -1, 64)
 	}
 	if or.IcebergQty != 0 {
-		params["icebergQty"] = strconv.FormatFloat(or.IcebergQty, 'f', 10, 64)
+		params["icebergQty"] = strconv.FormatFloat(or.IcebergQty, 'f', -1, 64)
 	}
 
-	res, err := as.request("POST", "api/v3/order/test", params, true, true)
+	err := as.request("POST", "api/v3/order/test", params, nil, true, true)
 	if err != nil {
 		return err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return warpError(err, "unable to read response from Ticker/24hr")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return as.handleError(textRes)
 	}
 	return nil
 }
@@ -126,24 +100,10 @@ func (as *apiService) QueryOrder(qor QueryOrderRequest) (*ExecutedOrder, error) 
 	if qor.RecvWindow != 0 {
 		params["recvWindow"] = strconv.FormatInt(recvWindow(qor.RecvWindow), 10)
 	}
-
-	res, err := as.request("GET", "api/v3/order", params, true, true)
+	rawOrder := &rawExecutedOrder{}
+	err := as.request("GET", "api/v3/order", params, rawOrder, true, true)
 	if err != nil {
 		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from order.get")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
-	rawOrder := &rawExecutedOrder{}
-	if err := json.Unmarshal(textRes, rawOrder); err != nil {
-		return nil, warpError(err, "rawOrder unmarshal failed")
 	}
 
 	eo, err := executedOrderFromRaw(rawOrder)
@@ -169,31 +129,16 @@ func (as *apiService) CancelOrder(cor CancelOrderRequest) (*CanceledOrder, error
 	if cor.RecvWindow != 0 {
 		params["recvWindow"] = strconv.FormatInt(recvWindow(cor.RecvWindow), 10)
 	}
-
-	res, err := as.request("DELETE", "api/v3/order", params, true, true)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from order.delete")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
 	rawCanceledOrder := struct {
 		Symbol            string `json:"symbol"`
 		OrigClientOrderID string `json:"origClientOrderId"`
 		OrderID           int64  `json:"orderId"`
 		ClientOrderID     string `json:"clientOrderId"`
 	}{}
-	if err := json.Unmarshal(textRes, &rawCanceledOrder); err != nil {
-		return nil, warpError(err, "cancelOrder unmarshal failed")
+	err := as.request("DELETE", "api/v3/order", params, &rawCanceledOrder, true, true)
+	if err != nil {
+		return nil, err
 	}
-
 	return &CanceledOrder{
 		Symbol:            rawCanceledOrder.Symbol,
 		OrigClientOrderID: rawCanceledOrder.OrigClientOrderID,
@@ -209,26 +154,11 @@ func (as *apiService) OpenOrders(oor OpenOrdersRequest) ([]*ExecutedOrder, error
 	if oor.RecvWindow != 0 {
 		params["recvWindow"] = strconv.FormatInt(recvWindow(oor.RecvWindow), 10)
 	}
-
-	res, err := as.request("GET", "api/v3/openOrders", params, true, true)
+	rawOrders := []*rawExecutedOrder{}
+	err := as.request("GET", "api/v3/openOrders", params, &rawOrders, true, true)
 	if err != nil {
 		return nil, err
 	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from openOrders.get")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
-	rawOrders := []*rawExecutedOrder{}
-	if err := json.Unmarshal(textRes, &rawOrders); err != nil {
-		return nil, warpError(err, "openOrders unmarshal failed")
-	}
-
 	var eoc []*ExecutedOrder
 	for _, rawOrder := range rawOrders {
 		eo, err := executedOrderFromRaw(rawOrder)
@@ -244,39 +174,23 @@ func (as *apiService) OpenOrders(oor OpenOrdersRequest) ([]*ExecutedOrder, error
 func (as *apiService) AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error) {
 	params := make(map[string]string)
 	params["symbol"] = aor.Symbol
-	params["timestamp"] = strconv.FormatInt(unixMillis(aor.Timestamp), 10)
-	if aor.OrderID != 0 {
-		params["orderId"] = strconv.FormatInt(aor.OrderID, 10)
-	}
+	params["timestamp"] = strconv.FormatInt(unixMillis(time.Now()), 10)
+	params["orderId"] = strconv.FormatInt(aor.OrderID, 10)
 	if aor.Limit != 0 {
 		params["limit"] = strconv.Itoa(aor.Limit)
 	}
 	if aor.RecvWindow != 0 {
 		params["recvWindow"] = strconv.FormatInt(recvWindow(aor.RecvWindow), 10)
 	}
-
-	res, err := as.request("GET", "api/v3/allOrders", params, true, true)
+	rawOrders := []rawExecutedOrder{}
+	err := as.request("GET", "api/v3/allOrders", params, &rawOrders, true, true)
 	if err != nil {
 		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from allOrders.get")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
-	rawOrders := []*rawExecutedOrder{}
-	if err := json.Unmarshal(textRes, &rawOrders); err != nil {
-		return nil, warpError(err, "allOrders unmarshal failed")
 	}
 
 	var eoc []*ExecutedOrder
 	for _, rawOrder := range rawOrders {
-		eo, err := executedOrderFromRaw(rawOrder)
+		eo, err := executedOrderFromRaw(&rawOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -292,21 +206,6 @@ func (as *apiService) Account(ar AccountRequest) (*Account, error) {
 	if ar.RecvWindow != 0 {
 		params["recvWindow"] = strconv.FormatInt(recvWindow(ar.RecvWindow), 10)
 	}
-
-	res, err := as.request("GET", "api/v3/account", params, true, true)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from account.get")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
 	rawAccount := struct {
 		MakerCommision   int64 `json:"makerCommision"`
 		TakerCommission  int64 `json:"takerCommission"`
@@ -321,8 +220,9 @@ func (as *apiService) Account(ar AccountRequest) (*Account, error) {
 			Locked string `json:"locked"`
 		}
 	}{}
-	if err := json.Unmarshal(textRes, &rawAccount); err != nil {
-		return nil, warpError(err, "rawAccount unmarshal failed")
+	err := as.request("GET", "api/v3/account", params, &rawAccount, true, true)
+	if err != nil {
+		return nil, err
 	}
 
 	acc := &Account{
@@ -366,21 +266,6 @@ func (as *apiService) MyTrades(mtr MyTradesRequest) ([]*Trade, error) {
 	if mtr.Limit != 0 {
 		params["limit"] = strconv.Itoa(mtr.Limit)
 	}
-
-	res, err := as.request("GET", "api/v3/myTrades", params, true, true)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from myTrades.get")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
 	rawTrades := []struct {
 		ID              int64   `json:"id"`
 		Price           string  `json:"price"`
@@ -392,8 +277,9 @@ func (as *apiService) MyTrades(mtr MyTradesRequest) ([]*Trade, error) {
 		IsMaker         bool    `json:"isMaker"`
 		IsBestMatch     bool    `json:"isBestMatch"`
 	}{}
-	if err := json.Unmarshal(textRes, &rawTrades); err != nil {
-		return nil, warpError(err, "rawTrades unmarshal failed")
+	err := as.request("GET", "api/v3/myTrades", params, &rawTrades, true, true)
+	if err != nil {
+		return nil, err
 	}
 
 	var tc []*Trade
@@ -441,27 +327,13 @@ func (as *apiService) Withdraw(wr WithdrawRequest) (*WithdrawResult, error) {
 	if wr.Name != "" {
 		params["name"] = wr.Name
 	}
-
-	res, err := as.request("POST", "wapi/v1/withdraw.html", params, true, true)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from withdraw.post")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
 	rawResult := struct {
 		Msg     string `json:"msg"`
 		Success bool   `json:"success"`
 	}{}
-	if err := json.Unmarshal(textRes, &rawResult); err != nil {
-		return nil, warpError(err, "rawTrades unmarshal failed")
+	err := as.request("POST", "wapi/v1/withdraw.html", params, &rawResult, true, true)
+	if err != nil {
+		return nil, err
 	}
 
 	return &WithdrawResult{
@@ -488,20 +360,6 @@ func (as *apiService) DepositHistory(hr HistoryRequest) ([]*Deposit, error) {
 		params["recvWindow"] = strconv.FormatInt(recvWindow(hr.RecvWindow), 10)
 	}
 
-	res, err := as.request("POST", "wapi/v1/getDepositHistory.html", params, true, true)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from depositHistory.post")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
 	rawDepositHistory := struct {
 		DepositList []struct {
 			InsertTime float64 `json:"insertTime"`
@@ -511,8 +369,9 @@ func (as *apiService) DepositHistory(hr HistoryRequest) ([]*Deposit, error) {
 		}
 		Success bool `json:"success"`
 	}{}
-	if err := json.Unmarshal(textRes, &rawDepositHistory); err != nil {
-		return nil, warpError(err, "rawDepositHistory unmarshal failed")
+	err := as.request("POST", "wapi/v1/getDepositHistory.html", params, &rawDepositHistory, true, true)
+	if err != nil {
+		return nil, err
 	}
 
 	var dc []*Deposit
@@ -549,21 +408,6 @@ func (as *apiService) WithdrawHistory(hr HistoryRequest) ([]*Withdrawal, error) 
 	if hr.RecvWindow != 0 {
 		params["recvWindow"] = strconv.FormatInt(recvWindow(hr.RecvWindow), 10)
 	}
-
-	res, err := as.request("POST", "wapi/v1/getWithdrawHistory.html", params, true, true)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from withdrawHistory.post")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
 	rawWithdrawHistory := struct {
 		WithdrawList []struct {
 			Amount    float64 `json:"amount"`
@@ -575,8 +419,9 @@ func (as *apiService) WithdrawHistory(hr HistoryRequest) ([]*Withdrawal, error) 
 		}
 		Success bool `json:"success"`
 	}{}
-	if err := json.Unmarshal(textRes, &rawWithdrawHistory); err != nil {
-		return nil, warpError(err, "rawWithdrawHistory unmarshal failed")
+	err := as.request("POST", "wapi/v1/getWithdrawHistory.html", params, &rawWithdrawHistory, true, true)
+	if err != nil {
+		return nil, err
 	}
 
 	var wc []*Withdrawal

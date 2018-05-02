@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	//"log"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
@@ -9,9 +12,19 @@ import (
 )
 
 func main() {
+	f, _ := os.Open("../cfg.json")
+	js, _ := ioutil.ReadAll(f)
+	cjs := struct {
+		Gate struct {
+			APIKey string
+			APISec string
+		}
+	}{}
+	json.Unmarshal(js, &cjs)
+
 	cfg := &config.Config{}
-	cfg.WithAPIKey("BBE2782F-69D1-445A-96E0-31D8DA35242E")
-	cfg.WithSecret("00d37f5cb1a66f3329dca89260a0ee302e4ed9285f93caf6bd22a1d116aa4301")
+	cfg.WithAPIKey(cjs.Gate.APIKey)
+	cfg.WithSecret(cjs.Gate.APISec)
 
 	c := gate.NewClient(cfg)
 

@@ -1,41 +1,30 @@
 package binance
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"strconv"
 	"time"
 )
 
 func (as *apiService) Ping() error {
 	params := make(map[string]string)
-	response, err := as.request("GET", "api/v1/ping", params, false, false)
+	err := as.request("GET", "api/v1/ping", params, nil, false, false)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%#v\n", response.StatusCode)
 	return nil
 }
 
 func (as *apiService) Time() (time.Time, error) {
 	params := make(map[string]string)
-	res, err := as.request("GET", "api/v1/time", params, false, false)
+	var rawTime struct {
+		ServerTime float64 `json:"serverTime"`
+	}
+	err := as.request("GET", "api/v1/time", params, &rawTime, false, false)
 	if err != nil {
 		return time.Time{}, err
 	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return time.Time{}, warpError(err, "unable to read response from Time")
-	}
-	defer res.Body.Close()
-	var rawTime struct {
-		ServerTime string `json:"serverTime"`
-	}
-	if err := json.Unmarshal(textRes, &rawTime); err != nil {
-		return time.Time{}, warpError(err, "timeResponse unmarshal failed")
-	}
-	t, err := timeFromUnixTimestampFloat(rawTime)
+
+	t, err := timeFromUnixTimestampFloat(rawTime.ServerTime)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -48,29 +37,15 @@ func (as *apiService) OrderBook(obr OrderBookRequest) (*OrderBook, error) {
 	if obr.Limit != 0 {
 		params["limit"] = strconv.Itoa(obr.Limit)
 	}
-	res, err := as.request("GET", "api/v1/depth", params, false, false)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from Time")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		as.handleError(textRes)
-	}
-
 	rawBook := &struct {
 		LastUpdateID int             `json:"lastUpdateId"`
 		Bids         [][]interface{} `json:"bids"`
 		Asks         [][]interface{} `json:"asks"`
 	}{}
-	if err := json.Unmarshal(textRes, rawBook); err != nil {
-		return nil, warpError(err, "timeResponse unmarshal failed")
+	err := as.request("GET", "api/v1/depth", params, &rawBook, false, false)
+	if err != nil {
+		return nil, err
 	}
-
 	ob := &OrderBook{
 		LastUpdateID: rawBook.LastUpdateID,
 	}
@@ -121,21 +96,6 @@ func (as *apiService) AggTrades(atr AggTradesRequest) ([]*AggTrade, error) {
 	if atr.Limit != 0 {
 		params["limit"] = strconv.Itoa(atr.Limit)
 	}
-
-	res, err := as.request("GET", "api/v1/aggTrades", params, false, false)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from AggTrades")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		as.handleError(textRes)
-	}
-
 	rawAggTrades := []struct {
 		ID             int    `json:"a"`
 		Price          string `json:"p"`
@@ -146,8 +106,9 @@ func (as *apiService) AggTrades(atr AggTradesRequest) ([]*AggTrade, error) {
 		BuyerMaker     bool   `json:"m"`
 		BestPriceMatch bool   `json:"M"`
 	}{}
-	if err := json.Unmarshal(textRes, &rawAggTrades); err != nil {
-		return nil, warpError(err, "aggTrades unmarshal failed")
+	err := as.request("GET", "api/v1/aggTrades", params, rawAggTrades, false, false)
+	if err != nil {
+		return nil, err
 	}
 	aggTrades := []*AggTrade{}
 	for _, rawTrade := range rawAggTrades {
@@ -188,24 +149,10 @@ func (as *apiService) Klines(kr KlinesRequest) ([]*Kline, error) {
 	if kr.EndTime != 0 {
 		params["endTime"] = strconv.FormatInt(kr.EndTime, 10)
 	}
-
-	res, err := as.request("GET", "api/v1/klines", params, false, false)
+	rawKlines := [][]interface{}{}
+	err := as.request("GET", "api/v1/klines", params, rawKlines, false, false)
 	if err != nil {
 		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from Klines")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		as.handleError(textRes)
-	}
-
-	rawKlines := [][]interface{}{}
-	if err := json.Unmarshal(textRes, &rawKlines); err != nil {
-		return nil, warpError(err, "rawKlines unmarshal failed")
 	}
 	klines := []*Kline{}
 	for _, k := range rawKlines {
@@ -273,21 +220,6 @@ func (as *apiService) Klines(kr KlinesRequest) ([]*Kline, error) {
 func (as *apiService) Ticker24(symbol string) (*Ticker24, error) {
 	params := make(map[string]string)
 	params["symbol"] = symbol
-
-	res, err := as.request("GET", "api/v1/ticker/24hr", params, false, false)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from Ticker/24hr")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		as.handleError(textRes)
-	}
-
 	rawTicker24 := struct {
 		PriceChange        string  `json:"priceChange"`
 		PriceChangePercent string  `json:"priceChangePercent"`
@@ -306,10 +238,10 @@ func (as *apiService) Ticker24(symbol string) (*Ticker24, error) {
 		LastID             int
 		Count              int
 	}{}
-	if err := json.Unmarshal(textRes, &rawTicker24); err != nil {
-		return nil, warpError(err, "rawTicker24 unmarshal failed")
+	err := as.request("GET", "api/v1/ticker/24hr", params, &rawTicker24, false, false)
+	if err != nil {
+		return nil, err
 	}
-
 	pc, err := strconv.ParseFloat(rawTicker24.PriceChange, 64)
 	if err != nil {
 		return nil, warpError(err, "cannot parse Ticker24.PriceChange")
@@ -385,27 +317,13 @@ func (as *apiService) Ticker24(symbol string) (*Ticker24, error) {
 
 func (as *apiService) TickerAllPrices() ([]*PriceTicker, error) {
 	params := make(map[string]string)
-
-	res, err := as.request("GET", "api/v1/ticker/allPrices", params, false, false)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from Ticker/24hr")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		as.handleError(textRes)
-	}
-
 	rawTickerAllPrices := []struct {
 		Symbol string `json:"symbol"`
 		Price  string `json:"price"`
 	}{}
-	if err := json.Unmarshal(textRes, &rawTickerAllPrices); err != nil {
-		return nil, warpError(err, "rawTickerAllPrices unmarshal failed")
+	err := as.request("GET", "api/v1/ticker/allPrices", params, rawTickerAllPrices, false, false)
+	if err != nil {
+		return nil, err
 	}
 
 	var tpc []*PriceTicker
@@ -424,21 +342,6 @@ func (as *apiService) TickerAllPrices() ([]*PriceTicker, error) {
 
 func (as *apiService) TickerAllBooks() ([]*BookTicker, error) {
 	params := make(map[string]string)
-
-	res, err := as.request("GET", "api/v1/ticker/allBookTickers", params, false, false)
-	if err != nil {
-		return nil, err
-	}
-	textRes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, warpError(err, "unable to read response from Ticker/allBookTickers")
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, as.handleError(textRes)
-	}
-
 	rawBookTickers := []struct {
 		Symbol   string `json:"symbol"`
 		BidPrice string `json:"bidPrice"`
@@ -446,10 +349,10 @@ func (as *apiService) TickerAllBooks() ([]*BookTicker, error) {
 		AskPrice string `json:"askPrice"`
 		AskQty   string `json:"askQty"`
 	}{}
-	if err := json.Unmarshal(textRes, &rawBookTickers); err != nil {
-		return nil, warpError(err, "rawBookTickers unmarshal failed")
+	err := as.request("GET", "api/v1/ticker/allBookTickers", params, rawBookTickers, false, false)
+	if err != nil {
+		return nil, err
 	}
-
 	var btc []*BookTicker
 	for _, rawBookTicker := range rawBookTickers {
 		bp, err := strconv.ParseFloat(rawBookTicker.BidPrice, 64)
