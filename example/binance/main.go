@@ -26,13 +26,13 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	kech, done, err := b.TradeWebsocket("BTCUSDT")
+	kech, err := b.TradeWebsocket("BTCUSDT")
 	if err != nil {
 		panic(err)
 	}
-	depth, _, _ := b.DepthWebsocket("BTCUSDT")
+	depth, _ := b.DepthWebsocket("BTCUSDT")
 
-	tk, _, _ := b.TickerWebsocket("BTCUSDT")
+	tk, _ := b.TickerWebsocket("BTCUSDT")
 	go func() {
 		for {
 			select {
@@ -40,8 +40,6 @@ func main() {
 				fmt.Printf("%+v\n", ke)
 			case d := <-depth:
 				fmt.Printf("%+v\n", d)
-			case <-done:
-				break
 			case t := <-tk:
 				fmt.Printf("%+v\n", t)
 			}
@@ -52,8 +50,6 @@ func main() {
 	<-interrupt
 	fmt.Println("canceling context")
 
-	fmt.Println("waiting for signal")
-	<-done
 	fmt.Println("exit")
 	return
 

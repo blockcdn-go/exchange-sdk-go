@@ -25,7 +25,7 @@ type Service interface {
 	// Klines returns klines/candlestick data.
 	Klines(kr KlinesRequest) ([]*Kline, error)
 	// Ticker24 returns 24hr price change statistics.
-	Ticker24(tr TickerRequest) (*Ticker24, error)
+	Ticker24(symbol string) (*Ticker24, error)
 	// TickerAllPrices returns ticker data for symbols.
 	TickerAllPrices() ([]*PriceTicker, error)
 	// TickerAllBooks returns tickers for all books.
@@ -62,11 +62,12 @@ type Service interface {
 	// CloseUserDataStream closes opened stream.
 	CloseUserDataStream(s *Stream) error
 
-	DepthWebsocket(symbol string) (chan *DepthEvent, chan struct{}, error)
-	KlineWebsocket(symbol string, intr Interval) (chan *KlineEvent, chan struct{}, error)
-	TradeWebsocket(symbol string) (chan *AggTradeEvent, chan struct{}, error)
-	TickerWebsocket(symbol string) (chan *Ticker24, chan struct{}, error)
-	UserDataWebsocket(udwr UserDataWebsocketRequest) (chan *AccountEvent, chan struct{}, error)
+	DepthWebsocket(symbol string) (chan *DepthEvent, error)
+	KlineWebsocket(symbol string, intr Interval) (chan *KlineEvent, error)
+	TradeWebsocket(symbol string) (chan *AggTradeEvent, error)
+	TickerWebsocket(symbol string) (chan *Ticker24, error)
+	Ticker24Websocket() (chan *Ticker24, error)
+	UserDataWebsocket(udwr UserDataWebsocketRequest) (chan *AccountEvent, error)
 }
 
 type apiService struct {

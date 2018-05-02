@@ -270,9 +270,9 @@ func (as *apiService) Klines(kr KlinesRequest) ([]*Kline, error) {
 	return klines, nil
 }
 
-func (as *apiService) Ticker24(tr TickerRequest) (*Ticker24, error) {
+func (as *apiService) Ticker24(symbol string) (*Ticker24, error) {
 	params := make(map[string]string)
-	params["symbol"] = tr.Symbol
+	params["symbol"] = symbol
 
 	res, err := as.request("GET", "api/v1/ticker/24hr", params, false, false)
 	if err != nil {

@@ -7,12 +7,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
 
-func (as *apiService) DepthWebsocket(symbol string) (chan *DepthEvent, chan struct{}, error) {
+func (as *apiService) DepthWebsocket(symbol string) (chan *DepthEvent, error) {
 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@depth", strings.ToLower(symbol))
 	dial := websocket.DefaultDialer
 	if as.proxy != nil {
@@ -23,12 +22,10 @@ func (as *apiService) DepthWebsocket(symbol string) (chan *DepthEvent, chan stru
 		log.Fatal("dial:", err)
 	}
 
-	done := make(chan struct{})
 	dech := make(chan *DepthEvent)
 
 	go func() {
 		defer c.Close()
-		defer close(done)
 		for {
 			select {
 			case <-as.Ctx.Done():
@@ -102,11 +99,10 @@ func (as *apiService) DepthWebsocket(symbol string) (chan *DepthEvent, chan stru
 		}
 	}()
 
-	go as.exitHandler(c, done)
-	return dech, done, nil
+	return dech, nil
 }
 
-func (as *apiService) KlineWebsocket(symbol string, intr Interval) (chan *KlineEvent, chan struct{}, error) {
+func (as *apiService) KlineWebsocket(symbol string, intr Interval) (chan *KlineEvent, error) {
 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@kline_%s", strings.ToLower(symbol), string(intr))
 	dial := websocket.DefaultDialer
 	if as.proxy != nil {
@@ -117,12 +113,10 @@ func (as *apiService) KlineWebsocket(symbol string, intr Interval) (chan *KlineE
 		log.Fatal("dial:", err)
 	}
 
-	done := make(chan struct{})
 	kech := make(chan *KlineEvent)
 
 	go func() {
 		defer c.Close()
-		defer close(done)
 		for {
 			select {
 			case <-as.Ctx.Done():
@@ -246,11 +240,10 @@ func (as *apiService) KlineWebsocket(symbol string, intr Interval) (chan *KlineE
 		}
 	}()
 
-	go as.exitHandler(c, done)
-	return kech, done, nil
+	return kech, nil
 }
 
-func (as *apiService) TradeWebsocket(symbol string) (chan *AggTradeEvent, chan struct{}, error) {
+func (as *apiService) TradeWebsocket(symbol string) (chan *AggTradeEvent, error) {
 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@aggTrade", strings.ToLower(symbol))
 	dial := websocket.DefaultDialer
 	if as.proxy != nil {
@@ -261,12 +254,10 @@ func (as *apiService) TradeWebsocket(symbol string) (chan *AggTradeEvent, chan s
 		log.Fatal("dial:", err)
 	}
 
-	done := make(chan struct{})
 	aggtech := make(chan *AggTradeEvent)
 
 	go func() {
 		defer c.Close()
-		defer close(done)
 		for {
 			select {
 			case <-as.Ctx.Done():
@@ -337,11 +328,10 @@ func (as *apiService) TradeWebsocket(symbol string) (chan *AggTradeEvent, chan s
 		}
 	}()
 
-	go as.exitHandler(c, done)
-	return aggtech, done, nil
+	return aggtech, nil
 }
 
-func (as *apiService) TickerWebsocket(symbol string) (chan *Ticker24, chan struct{}, error) {
+func (as *apiService) TickerWebsocket(symbol string) (chan *Ticker24, error) {
 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@ticker", strings.ToLower(symbol))
 	dial := websocket.DefaultDialer
 	if as.proxy != nil {
@@ -352,7 +342,6 @@ func (as *apiService) TickerWebsocket(symbol string) (chan *Ticker24, chan struc
 		log.Fatal("dial:", err)
 	}
 
-	done := make(chan struct{})
 	tk := make(chan *Ticker24)
 	go func() {
 		defer c.Close()
@@ -445,6 +434,7 @@ func (as *apiService) TickerWebsocket(symbol string) (chan *Ticker24, chan struc
 					continue
 				}
 				t24 := &Ticker24{
+					Symbol:             symbol,
 					PriceChange:        pc,
 					PriceChangePercent: pcPercent,
 					WeightedAvgPrice:   wap,
@@ -467,10 +457,95 @@ func (as *apiService) TickerWebsocket(symbol string) (chan *Ticker24, chan struc
 		}
 	}()
 
-	return tk, done, nil
+	return tk, nil
 }
 
-func (as *apiService) UserDataWebsocket(urwr UserDataWebsocketRequest) (chan *AccountEvent, chan struct{}, error) {
+func (as *apiService) Ticker24Websocket() (chan *Ticker24, error) {
+	url := "wss://stream.binance.com:9443/ws/!miniTicker@arr@3000ms"
+	dial := websocket.DefaultDialer
+	if as.proxy != nil {
+		dial.Proxy = http.ProxyURL(as.proxy)
+	}
+	c, _, err := dial.Dial(url, nil)
+	if err != nil {
+		log.Fatal("dial:", err)
+	}
+
+	tk := make(chan *Ticker24)
+	go func() {
+		defer c.Close()
+		for {
+			select {
+			case <-as.Ctx.Done():
+				log.Println("closing reader ", url)
+				return
+			default:
+				_, message, err := c.ReadMessage()
+				if err != nil {
+					log.Println("wsRead ", err, url)
+					return
+				}
+				arrtk := make([]struct {
+					LastPrice string  `json:"c"` //
+					OpenPrice string  `json:"o"` //
+					HighPrice string  `json:"h"` //
+					LowPrice  string  `json:"l"` //
+					Volume    string  `json:"v"` //
+					OpenTime  float64 `json:"E"` //
+					Event     string  `json:"e"` //
+					Symbol    string  `json:"s"`
+				}, 0)
+				if err := json.Unmarshal(message, &arrtk); err != nil {
+					log.Println("wsUnmarshal", err, "body", string(message))
+					continue
+				}
+
+				for _, rawTicker24 := range arrtk {
+
+					lastPrice, err := strconv.ParseFloat(rawTicker24.LastPrice, 64)
+					if err != nil {
+						continue
+					}
+					op, err := strconv.ParseFloat(rawTicker24.OpenPrice, 64)
+					if err != nil {
+						continue
+					}
+					hp, err := strconv.ParseFloat(rawTicker24.HighPrice, 64)
+					if err != nil {
+						continue
+					}
+					lowPrice, err := strconv.ParseFloat(rawTicker24.LowPrice, 64)
+					if err != nil {
+						continue
+					}
+					vol, err := strconv.ParseFloat(rawTicker24.Volume, 64)
+					if err != nil {
+						continue
+					}
+					ot, err := timeFromUnixTimestampFloat(rawTicker24.OpenTime)
+					if err != nil {
+						continue
+					}
+
+					t24 := &Ticker24{
+						LastPrice: lastPrice,
+						OpenPrice: op,
+						HighPrice: hp,
+						LowPrice:  lowPrice,
+						Volume:    vol,
+						OpenTime:  ot,
+						Symbol:    rawTicker24.Symbol,
+					}
+					tk <- t24
+				}
+			}
+		}
+	}()
+
+	return tk, nil
+}
+
+func (as *apiService) UserDataWebsocket(urwr UserDataWebsocketRequest) (chan *AccountEvent, error) {
 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s", urwr.ListenKey)
 	dial := websocket.DefaultDialer
 	if as.proxy != nil {
@@ -481,12 +556,10 @@ func (as *apiService) UserDataWebsocket(urwr UserDataWebsocketRequest) (chan *Ac
 		log.Fatal("dial:", err)
 	}
 
-	done := make(chan struct{})
 	aech := make(chan *AccountEvent)
 
 	go func() {
 		defer c.Close()
-		defer close(done)
 		for {
 			select {
 			case <-as.Ctx.Done():
@@ -501,7 +574,6 @@ func (as *apiService) UserDataWebsocket(urwr UserDataWebsocketRequest) (chan *Ac
 				rawAccount := struct {
 					Type            string  `json:"e"`
 					Time            float64 `json:"E"`
-					OpenTime        float64 `json:"t"`
 					MakerCommision  int64   `json:"m"`
 					TakerCommision  int64   `json:"t"`
 					BuyerCommision  int64   `json:"b"`
@@ -562,30 +634,5 @@ func (as *apiService) UserDataWebsocket(urwr UserDataWebsocketRequest) (chan *Ac
 		}
 	}()
 
-	go as.exitHandler(c, done)
-	return aech, done, nil
-}
-
-func (as *apiService) exitHandler(c *websocket.Conn, done chan struct{}) {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	defer c.Close()
-
-	for {
-		select {
-		//case t := <-ticker.C:
-		// err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
-		// if err != nil {
-		// 	log.Println("wsWrite", err)
-		// 	return
-		// }
-		case <-as.Ctx.Done():
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
-			log.Println("closing connection")
-			return
-		}
-	}
+	return aech, nil
 }

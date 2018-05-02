@@ -100,13 +100,9 @@ type KlineEvent struct {
 	Kline
 }
 
-// TickerRequest represents Ticker request data.
-type TickerRequest struct {
-	Symbol string
-}
-
 // Ticker24 represents data for 24hr ticker.
 type Ticker24 struct {
+	Symbol             string
 	PriceChange        float64
 	PriceChangePercent float64
 	WeightedAvgPrice   float64
