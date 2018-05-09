@@ -19,7 +19,8 @@ func (as *apiService) DepthWebsocket(symbol string) (chan *DepthEvent, error) {
 	}
 	c, _, err := dial.Dial(url, nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Println("dial:", err)
+		return nil, err
 	}
 
 	dech := make(chan *DepthEvent)
@@ -110,7 +111,8 @@ func (as *apiService) KlineWebsocket(symbol string, intr Interval) (chan *KlineE
 	}
 	c, _, err := dial.Dial(url, nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Println("dial:", err)
+		return nil, err
 	}
 
 	kech := make(chan *KlineEvent)
@@ -251,7 +253,8 @@ func (as *apiService) TradeWebsocket(symbol string) (chan *AggTradeEvent, error)
 	}
 	c, _, err := dial.Dial(url, nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Println("dial:", err)
+		return nil, err
 	}
 
 	aggtech := make(chan *AggTradeEvent)
@@ -339,7 +342,8 @@ func (as *apiService) TickerWebsocket(symbol string) (chan *Ticker24, error) {
 	}
 	c, _, err := dial.Dial(url, nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Println("dial:", err)
+		return nil, err
 	}
 
 	tk := make(chan *Ticker24)
@@ -468,7 +472,8 @@ func (as *apiService) Ticker24Websocket() (chan *Ticker24, error) {
 	}
 	c, _, err := dial.Dial(url, nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Println("dial:", err)
+		return nil, err
 	}
 
 	tk := make(chan *Ticker24)
@@ -553,7 +558,8 @@ func (as *apiService) UserDataWebsocket(listenKey string) (chan *AccountEvent, e
 	}
 	c, _, err := dial.Dial(url, nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Println("dial:", err)
+		return nil, err
 	}
 
 	aech := make(chan *AccountEvent)
