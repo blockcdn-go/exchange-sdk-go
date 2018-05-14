@@ -27,8 +27,8 @@ type MarketListResponse struct {
 
 // TickerResponse ...
 type TickerResponse struct {
-	Base          string
-	Quote         string
+	Base          string  `json:"base"`
+	Quote         string  `json:"quote"`
 	BaseVolume    float64 `josn:"baseVolume"`    // 交易量
 	High24hr      float64 `json:"high24hr"`      // 24小时最高价
 	Low24hr       float64 `json:"low24hr"`       // 24小时最低价
@@ -41,16 +41,16 @@ type TickerResponse struct {
 
 // PSpair 深度行情的价格和手数对
 type PSpair struct {
-	Price float64
-	Size  float64
+	Price float64 `json:"price"`
+	Size  float64 `json:"size"`
 }
 
 // Depth5 ...
 type Depth5 struct {
-	Base  string
-	Quote string
-	Asks  []PSpair // 卖方
-	Bids  []PSpair // 买方
+	Base  string   `json:"base"`
+	Quote string   `json:"quote"`
+	Asks  []PSpair `json:"asks"` // 卖方
+	Bids  []PSpair `json:"bids"` // 买方
 }
 
 // Balance ...
