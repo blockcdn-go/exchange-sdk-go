@@ -11,7 +11,7 @@ import (
 
 func defaultConfig() *config.Config {
 	cfg := &config.Config{}
-	cfg.WithWSSHost("api.hadax.com")
+	cfg.WithWSSHost("api.huobipro.com")
 	cfg.WithRESTHost("api.huobipro.com")
 	transport := clean.DefaultPooledTransport()
 	u, _ := url.Parse("http://127.0.0.1:1080")

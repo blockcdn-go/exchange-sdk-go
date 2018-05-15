@@ -24,16 +24,8 @@ func (c *Client) GetAllAccountID() ([]Account, error) {
 }
 
 // BalanceInfo 查询指定账户的余额
-// @parm ishadax true 从HADAX站查询, false pro 站查询
 // @parm accountID GetAllAccountID函数返回的id
-func (c *Client) BalanceInfo(ishadax bool, accountID int64) ([]Balance, error) {
-	f := func() string {
-		if ishadax {
-			return "/v1/hadax/account/accounts/"
-		}
-		return "/v1/account/accounts/"
-	}
-
+func (c *Client) BalanceInfo(accountID int64) ([]Balance, error) {
 	r := struct {
 		Status string `json:"status"`
 		Data   struct {
@@ -43,7 +35,7 @@ func (c *Client) BalanceInfo(ishadax bool, accountID int64) ([]Balance, error) {
 		Errmsg string `json:"err-msg"`
 	}{}
 
-	path := fmt.Sprintf("%s%d/balance", f(), accountID)
+	path := fmt.Sprintf("/v1/account/accounts/%d/balance", accountID)
 	e := c.doHTTP("GET", path, nil, &r)
 	if e != nil {
 		return nil, e
@@ -56,22 +48,15 @@ func (c *Client) BalanceInfo(ishadax bool, accountID int64) ([]Balance, error) {
 
 // InsertOrder 下单
 // @return string: orderNo
-func (c *Client) InsertOrder(ishadax bool, req InsertOrderReq) (string, error) {
+func (c *Client) InsertOrder(req InsertOrderReq) (string, error) {
 	req.Source = "api"
 	mapParams := if2map(req)
-
-	f := func() string {
-		if ishadax {
-			return "/v1/hadax/order/orders/place"
-		}
-		return "/v1/order/orders/place"
-	}
 	r := struct {
 		Status string `json:"status"`
 		Errmsg string `json:"err-msg"`
 		Data   string `json:"data"`
 	}{}
-	e := c.doHTTP("POST", f(), mapParams, &r)
+	e := c.doHTTP("POST", "/v1/hadax/order/orders/place", mapParams, &r)
 	if e != nil {
 		return "", e
 	}
