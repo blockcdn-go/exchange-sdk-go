@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	//"log"
 
@@ -28,21 +29,20 @@ func main() {
 
 	c := gate.NewClient(cfg)
 
-	/*
-		resp, err := c.MarketList()
-		if err != nil {
-			log.Fatal("error: ", err)
-		}
+	resp, err := c.MarketList()
+	if err != nil {
+		log.Fatal("error: ", err)
+	}
 
-		for _, v := range resp {
-			fmt.Printf("%v\n", v)
-		}
-		ticker, e := c.TickerInfo("btc", "usdt")
-		fmt.Print("ticker ", ticker, e)
+	for _, v := range resp {
+		fmt.Printf("%v\n", v)
+	}
+	ticker, e := c.TickerInfo("btc", "usdt")
+	fmt.Print("ticker ", ticker, e)
 
-		depth, e1 := c.DepthInfo("btc", "usdt")
-		fmt.Print("DepthInfo", depth, e1)
-	*/
+	depth, e1 := c.DepthInfo("bcdn", "usdt")
+	fmt.Print("DepthInfo", depth, e1)
+
 	//////////////////////////////////
 
 	b, e2 := c.BalanceInfo()

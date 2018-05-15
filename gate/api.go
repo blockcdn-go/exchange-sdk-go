@@ -53,9 +53,15 @@ func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 	r.Quote = quote
 	r.Asks = make([]PSpair, 0, 5)
 	r.Bids = make([]PSpair, 0, 5)
-	// 卖 倒序
-	for end := len(t.Asks); end > len(t.Asks)-5; end-- {
-		r.Asks = append(r.Asks, PSpair{t.Asks[end-1][0], t.Asks[end-1][1]})
+	if t.Asks[0][0] > t.Asks[1][0] {
+		// 卖 倒序
+		for end := len(t.Asks); end > len(t.Asks)-5; end-- {
+			r.Asks = append(r.Asks, PSpair{t.Asks[end-1][0], t.Asks[end-1][1]})
+		}
+	} else {
+		for i := 0; i < 5; i++ {
+			r.Asks = append(r.Asks, PSpair{t.Asks[i][0], t.Asks[i][1]})
+		}
 	}
 
 	// 买
