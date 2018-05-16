@@ -53,6 +53,29 @@ type Depth5 struct {
 	Bids  []PSpair `json:"bids"` // 买方
 }
 
+// Kline k线数据
+type Kline struct {
+	Base      string
+	Quote     string
+	Timestamp float64 // 时间戳
+	Volume    float64 // 交易量
+	Close     float64 // 收盘价
+	High      float64 // 最高价
+	Low       float64 // 最低价
+	Open      float64 // 开盘价
+}
+
+// LateTrade 最近成交记录
+type LateTrade struct {
+	Base      string
+	Quote     string
+	DateTime  string  `json:"date"`   // 订单时间
+	Num       float64 `json:"amount"` // 成交币种数量
+	Price     float64 `json:"rate"`   // 币种单价
+	Dircetion string  `json:"type"`   // 买卖类型, buy买 sell卖
+	Total     float64 `json:"total"`  // 订单总额
+}
+
 // Balance ...
 type Balance struct {
 	Available map[string]float64

@@ -33,7 +33,7 @@ func (c *Client) TickerInfo(base, quote string) (TickerResponse, error) {
 	return result, e
 }
 
-// DepthInfo ...
+// DepthInfo 获取深度行情
 func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 	path := fmt.Sprintf("/api2/1/orderBook/%s_%s", base, quote)
 	t := struct {
@@ -69,6 +69,88 @@ func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 		r.Bids = append(r.Bids, PSpair{t.Bids[i][0], t.Bids[i][1]})
 	}
 	return r, nil
+}
+
+// KlineInfo 获取k线数据
+func (c *Client) KlineInfo(base, quote, period string) ([]Kline, error) {
+	groupSec := 60
+	rangeHour := 1
+	if period == "5m" {
+		groupSec = 300
+		rangeHour = 12
+	} else if period == "15m" {
+		groupSec = 900
+		rangeHour = 24
+	} else if period == "30m" {
+		groupSec = 1800
+		rangeHour = 48
+	} else if period == "1h" {
+		groupSec = 3600
+		rangeHour = 96
+	} else if period == "8h" {
+		groupSec = 28800
+		rangeHour = 768
+	} else if period == "1d" {
+		groupSec = 86400
+		rangeHour = 2304
+	}
+	path := fmt.Sprintf("/api2/1/candlestick2/%s_%s?group_sec=%d&range_hour=%d", base, quote, groupSec, rangeHour)
+	rsp := struct {
+		Result  string      `json:"result"`
+		Message string      `json:"message"`
+		Code    int64       `json:"code"`
+		Data    [][]float64 `json:"data"`
+	}{}
+
+	e := c.httpReq("GET", path, nil, &rsp)
+	if e != nil {
+		return nil, e
+	}
+	if rsp.Result != "true" {
+		return nil, fmt.Errorf(rsp.Message)
+	}
+	k := make([]Kline, 0)
+	for i := 0; i < len(rsp.Data); i++ {
+		if len(rsp.Data[i]) < 6 {
+			fmt.Println("gate len(rsp.Data[i]) < 6")
+			continue
+		}
+		k = append(k, Kline{
+			Base:      base,
+			Quote:     quote,
+			Timestamp: rsp.Data[i][0],
+			Volume:    rsp.Data[i][1],
+			Close:     rsp.Data[i][2],
+			High:      rsp.Data[i][3],
+			Low:       rsp.Data[i][4],
+			Open:      rsp.Data[i][5],
+		})
+	}
+	return k, nil
+}
+
+// LateTradeInfo 获取最近80条成交
+func (c *Client) LateTradeInfo(base, quote string) ([]LateTrade, error) {
+	path := fmt.Sprintf("/api2/1/tradeHistory/%s_%s", base, quote)
+	rsp := struct {
+		Result  string      `json:"result"`
+		Message string      `json:"message"`
+		Code    int64       `json:"code"`
+		Data    []LateTrade `json:"data"`
+	}{}
+
+	e := c.httpReq("GET", path, nil, &rsp)
+	if e != nil {
+		return nil, e
+	}
+	if rsp.Result != "true" {
+		return nil, fmt.Errorf(rsp.Message)
+	}
+	for i := 0; i < len(rsp.Data); i++ {
+		rsp.Data[i].Base = base
+		rsp.Data[i].Quote = quote
+	}
+	return rsp.Data, nil
 }
 
 //////////////////////////////////////////////////////////////////////////
