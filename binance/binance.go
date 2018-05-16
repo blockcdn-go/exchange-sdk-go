@@ -16,6 +16,13 @@ func (e Error) Error() string {
 	return fmt.Sprintf("%d: %s", e.Code, e.Message)
 }
 
+// TradePair 所有的可交易对
+type TradePair struct {
+	Symbol string `json:"symbol"`
+	Base   string `json:"baseAsset"`
+	Quote  string `json:"quoteAsset"`
+}
+
 // OrderBook represents Bids and Asks.
 type OrderBook struct {
 	LastUpdateID int `json:"lastUpdateId"`

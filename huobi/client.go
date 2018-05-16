@@ -292,7 +292,7 @@ func (c *Client) doHTTP(method, path string, mapParams map[string]string, out in
 		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36")
 
 	resp, re := c.config.HTTPClient.Do(req)
-	if e != nil {
+	if re != nil {
 		return re
 	}
 

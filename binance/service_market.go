@@ -31,6 +31,17 @@ func (as *apiService) Time() (time.Time, error) {
 	return t, nil
 }
 
+func (as *apiService) ExchangeInfo() ([]TradePair, error) {
+	r := &struct {
+		Symbols []TradePair `json:"symbols"`
+	}{}
+	err := as.request("GET", "api/v1/exchangeInfo", nil, &r, false, false)
+	if err != nil {
+		return nil, err
+	}
+	return r.Symbols, nil
+}
+
 func (as *apiService) OrderBook(obr OrderBookRequest) (*OrderBook, error) {
 	params := make(map[string]string)
 	params["symbol"] = obr.Symbol

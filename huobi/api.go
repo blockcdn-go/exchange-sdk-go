@@ -4,6 +4,23 @@ import (
 	"fmt"
 )
 
+// GetAllTradePairs 获取所有的可交易对
+func (c *Client) GetAllTradePairs() ([]TradePair, error) {
+	r := struct {
+		Status string      `json:"status"`
+		Data   []TradePair `json:"data"`
+		Errmsg string      `json:"err-msg"`
+	}{}
+	e := c.doHTTP("GET", "/v1/common/symbols", nil, &r)
+	if e != nil {
+		return nil, e
+	}
+	if r.Status != "ok" {
+		return nil, fmt.Errorf(r.Errmsg)
+	}
+	return r.Data, nil
+}
+
 // GetAllAccountID 获取用户的所有accountid
 // GET /v1/account/accounts 查询当前用户的所有账户(即account-id)，Pro站和HADAX account-id通用
 func (c *Client) GetAllAccountID() ([]Account, error) {

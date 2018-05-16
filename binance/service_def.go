@@ -20,6 +20,8 @@ type Service interface {
 	Ping() error
 	// Time returns server time.
 	Time() (time.Time, error)
+	// ExchangeInfo 所有的可交易对
+	ExchangeInfo() ([]TradePair, error)
 	// OrderBook returns list of orders.
 	OrderBook(obr OrderBookRequest) (*OrderBook, error)
 	// AggTrades returns compressed/aggregate list of trades.

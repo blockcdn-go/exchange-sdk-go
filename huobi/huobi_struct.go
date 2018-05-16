@@ -1,5 +1,11 @@
 package huobi
 
+// TradePair ...
+type TradePair struct {
+	Base  string `json:"base-currency"`  // 基础币种
+	Quote string `json:"quote-currency"` // 计价币种
+}
+
 // Account ...
 type Account struct {
 	AccountID   int64  `json:"id"`
