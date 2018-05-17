@@ -38,6 +38,7 @@ func (as *apiService) DepthWebsocket(symbol string) (chan *DepthEvent, error) {
 					log.Println("wsRead ", err, url)
 					return
 				}
+				//fmt.Println("binance depth:", string(message))
 				rawDepth := struct {
 					Type          string          `json:"e"`
 					Time          float64         `json:"E"`

@@ -74,6 +74,9 @@ func main() {
 	// fmt.Printf("%#v\n", kl)
 
 	// pass
+	k1, ke1 := b.Klines(binance.KlinesRequest{Symbol: "BTCUSDT", Interval: binance.Minute, Limit: 10})
+	fmt.Println("Klines:", k1, ke1)
+
 	r0, e0 := b.Time()
 	fmt.Println("time:", r0, e0)
 	r1, e1 := b.AllOrders(binance.AllOrdersRequest{

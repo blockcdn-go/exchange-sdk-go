@@ -2,6 +2,8 @@ package huobi
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 // GetAllTradePairs 获取所有的可交易对
@@ -36,6 +38,43 @@ func (c *Client) GetAllAccountID() ([]Account, error) {
 	}
 	if r.Status != "ok" {
 		return nil, fmt.Errorf(r.Errmsg)
+	}
+	return r.Data, nil
+}
+
+// GetKlineInfo 获取k线数据
+func (c *Client) GetKlineInfo(base, quote, period string, size int) ([]Kline, error) {
+	if strings.Contains(period, "m") {
+		period = period + "in"
+	} else if period == "1h" {
+		period = "60m"
+	} else if strings.Contains(period, "d") {
+		period = period + "ay"
+	} else if strings.Contains(period, "w") {
+		period = period + "eek"
+	}
+
+	arg := make(map[string]string)
+	arg["symbol"] = base + quote
+	arg["size"] = strconv.Itoa(size)
+	arg["period"] = period
+
+	r := struct {
+		Status string  `json:"status"`
+		Ch     string  `json:"ch"`
+		Data   []Kline `json:"data"`
+		Errmsg string  `json:"err-msg"`
+	}{}
+	e := c.doHTTP("GET", "/market/history/kline", arg, &r)
+	if e != nil {
+		return nil, e
+	}
+	if r.Status != "ok" {
+		return nil, fmt.Errorf(r.Errmsg)
+	}
+	for i := 0; i < len(r.Data); i++ {
+		r.Data[i].Base = base
+		r.Data[i].Quote = quote
 	}
 	return r.Data, nil
 }

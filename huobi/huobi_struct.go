@@ -13,6 +13,18 @@ type Account struct {
 	AccountType string `json:"type"`  // spot：现货账户
 }
 
+// Kline k线数据
+type Kline struct {
+	Base      string
+	Quote     string
+	Timestamp float64 // 时间戳
+	Volume    float64 `json:"vol"`   // 交易量
+	Close     float64 `json:"close"` // 收盘价
+	High      float64 `json:"high"`  // 最高价
+	Low       float64 `json:"low"`   // 最低价
+	Open      float64 `json:"open"`  // 开盘价
+}
+
 // Balance ...
 type Balance struct {
 	Amount     string `json:"balance"`  // 余额

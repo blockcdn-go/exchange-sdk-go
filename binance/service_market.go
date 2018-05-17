@@ -161,7 +161,7 @@ func (as *apiService) Klines(kr KlinesRequest) ([]*Kline, error) {
 		params["endTime"] = strconv.FormatInt(kr.EndTime, 10)
 	}
 	rawKlines := [][]interface{}{}
-	err := as.request("GET", "api/v1/klines", params, rawKlines, false, false)
+	err := as.request("GET", "api/v1/klines", params, &rawKlines, false, false)
 	if err != nil {
 		return nil, err
 	}
