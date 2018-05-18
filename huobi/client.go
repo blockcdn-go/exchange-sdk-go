@@ -307,7 +307,7 @@ func (c *Client) doHTTP(method, path string, mapParams map[string]string, out in
 		return err
 	}
 
-	fmt.Printf("huobi http message:%s\n", string(body))
+	//fmt.Printf("huobi http message:%s\n", string(body))
 	extra.RegisterFuzzyDecoders()
 
 	err = jsoniter.Unmarshal(body, out)

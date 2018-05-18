@@ -145,7 +145,7 @@ func (as *apiService) request(method string, path string, params map[string]stri
 	if err != nil {
 		return warpError(err, "unable to read response from allOrders.get")
 	}
-	fmt.Println("binance http msg:", string(textRes))
+	//fmt.Println("binance http msg:", string(textRes))
 	if resp.StatusCode != 200 {
 		return as.handleError(textRes)
 	}
