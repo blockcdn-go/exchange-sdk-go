@@ -200,12 +200,12 @@ func (as *apiService) AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error) 
 	return eoc, nil
 }
 
-func (as *apiService) Account(ar AccountRequest) (*Account, error) {
+func (as *apiService) Account() (*Account, error) {
 	params := make(map[string]string)
-	params["timestamp"] = strconv.FormatInt(unixMillis(ar.Timestamp), 10)
-	if ar.RecvWindow != 0 {
-		params["recvWindow"] = strconv.FormatInt(recvWindow(ar.RecvWindow), 10)
-	}
+	params["timestamp"] = strconv.FormatInt(unixMillis(time.Now()), 10)
+	// if ar.RecvWindow != 0 {
+	// 	params["recvWindow"] = strconv.FormatInt(recvWindow(5), 10)
+	// }
 	rawAccount := struct {
 		MakerCommision   int64 `json:"makerCommision"`
 		TakerCommission  int64 `json:"takerCommission"`

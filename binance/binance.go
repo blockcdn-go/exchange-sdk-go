@@ -228,12 +228,6 @@ type AllOrdersRequest struct {
 	Timestamp  time.Time
 }
 
-// AccountRequest represents Account request data.
-type AccountRequest struct {
-	RecvWindow time.Duration
-	Timestamp  time.Time
-}
-
 // Account represents user's account information.
 type Account struct {
 	MakerCommision  int64

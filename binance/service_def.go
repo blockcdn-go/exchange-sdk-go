@@ -49,7 +49,7 @@ type Service interface {
 	AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error)
 
 	// Account returns account data.
-	Account(ar AccountRequest) (*Account, error)
+	Account() (*Account, error)
 	// MyTrades list user's trades.
 	MyTrades(mtr MyTradesRequest) ([]*Trade, error)
 	// Withdraw executes withdrawal.
