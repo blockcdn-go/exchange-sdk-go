@@ -6,9 +6,11 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
 	"github.com/gotoxu/log/core"
@@ -84,7 +86,21 @@ func (c *Client) doRequest(r *request) (*http.Response, error) {
 		return nil, err
 	}
 
-	return c.config.HTTPClient.Do(req)
+	client := &http.Client{
+		Transport: &http.Transport{
+			Dial: func(netw, addr string) (net.Conn, error) {
+				conn, err := net.DialTimeout(netw, addr, time.Second*5) //设置建立连接超时
+				if err != nil {
+					return nil, err
+				}
+				conn.SetDeadline(time.Now().Add(time.Second * 5)) //设置发送接受数据超时
+				return conn, nil
+			},
+			ResponseHeaderTimeout: time.Second * 5,
+		},
+	}
+	return client.Do(req)
+	//return c.config.HTTPClient.Do(req)
 }
 
 func (c *Client) encodeFormBody(obj interface{}) (io.Reader, string, error) {

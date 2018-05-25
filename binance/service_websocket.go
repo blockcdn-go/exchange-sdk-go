@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -36,7 +37,16 @@ func (as *apiService) DepthWebsocket(symbol string) (chan *DepthEvent, error) {
 				_, message, err := c.ReadMessage()
 				if err != nil {
 					log.Println("wsRead ", err, url)
-					return
+					// reconnect
+					for {
+						c, _, err = dial.Dial(url, nil)
+						if err == nil {
+							log.Println("reconnect success")
+							break
+						}
+						time.Sleep(time.Second * 5)
+					}
+					continue
 				}
 				//fmt.Println("binance depth:", string(message))
 				rawDepth := struct {
@@ -129,7 +139,16 @@ func (as *apiService) KlineWebsocket(symbol string, intr Interval) (chan *KlineE
 				_, message, err := c.ReadMessage()
 				if err != nil {
 					log.Println("wsRead", err)
-					return
+					// reconnect
+					for {
+						c, _, err = dial.Dial(url, nil)
+						if err == nil {
+							log.Println("reconnect success")
+							break
+						}
+						time.Sleep(time.Second * 5)
+					}
+					continue
 				}
 				rawKline := struct {
 					Type     string  `json:"e"`
@@ -271,7 +290,16 @@ func (as *apiService) TradeWebsocket(symbol string) (chan *AggTradeEvent, error)
 				_, message, err := c.ReadMessage()
 				if err != nil {
 					log.Println("wsRead ", err, url)
-					return
+					// reconnect
+					for {
+						c, _, err = dial.Dial(url, nil)
+						if err == nil {
+							log.Println("reconnect success")
+							break
+						}
+						time.Sleep(time.Second * 5)
+					}
+					continue
 				}
 				rawAggTrade := struct {
 					Type         string  `json:"e"`
@@ -359,7 +387,16 @@ func (as *apiService) TickerWebsocket(symbol string) (chan *Ticker24, error) {
 				_, message, err := c.ReadMessage()
 				if err != nil {
 					log.Println("wsRead ", err, url)
-					return
+					// reconnect
+					for {
+						c, _, err = dial.Dial(url, nil)
+						if err == nil {
+							log.Println("reconnect success")
+							break
+						}
+						time.Sleep(time.Second * 5)
+					}
+					continue
 				}
 				rawTicker24 := struct {
 					PriceChange        string  `json:"p"`
@@ -489,7 +526,16 @@ func (as *apiService) Ticker24Websocket() (chan *Ticker24, error) {
 				_, message, err := c.ReadMessage()
 				if err != nil {
 					log.Println("wsRead ", err, url)
-					return
+					// reconnect
+					for {
+						c, _, err = dial.Dial(url, nil)
+						if err == nil {
+							log.Println("reconnect success")
+							break
+						}
+						time.Sleep(time.Second * 5)
+					}
+					continue
 				}
 				arrtk := make([]struct {
 					LastPrice string  `json:"c"` //

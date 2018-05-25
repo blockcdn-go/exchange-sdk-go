@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -106,7 +107,17 @@ func NewAPIService(ctx context.Context, url, apiKey, apiSec string, pxy *url.URL
 
 func (as *apiService) request(method string, path string, params map[string]string,
 	rsp interface{}, apiKey bool, sign bool) error {
-	transport := &http.Transport{}
+	transport := &http.Transport{
+		Dial: func(netw, addr string) (net.Conn, error) {
+			conn, err := net.DialTimeout(netw, addr, time.Second*5) //设置建立连接超时
+			if err != nil {
+				return nil, err
+			}
+			conn.SetDeadline(time.Now().Add(time.Second * 5)) //设置发送接受数据超时
+			return conn, nil
+		},
+		ResponseHeaderTimeout: time.Second * 5,
+	}
 	if as.proxy != nil {
 		transport.Proxy = http.ProxyURL(as.proxy)
 	}
