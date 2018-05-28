@@ -180,7 +180,7 @@ func (as *apiService) AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error) 
 		params["limit"] = strconv.Itoa(aor.Limit)
 	}
 	if aor.RecvWindow != 0 {
-		params["recvWindow"] = strconv.FormatInt(recvWindow(aor.RecvWindow), 10)
+		params["recvWindow"] = strconv.FormatInt(5, 10)
 	}
 	rawOrders := []rawExecutedOrder{}
 	err := as.request("GET", "api/v3/allOrders", params, &rawOrders, true, true)
@@ -203,9 +203,8 @@ func (as *apiService) AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error) 
 func (as *apiService) Account() (*Account, error) {
 	params := make(map[string]string)
 	params["timestamp"] = strconv.FormatInt(unixMillis(time.Now()), 10)
-	// if ar.RecvWindow != 0 {
-	// 	params["recvWindow"] = strconv.FormatInt(recvWindow(5), 10)
-	// }
+	params["recvWindow"] = strconv.FormatInt(recvWindow(5*time.Second), 10)
+
 	rawAccount := struct {
 		MakerCommision   int64 `json:"makerCommision"`
 		TakerCommission  int64 `json:"takerCommission"`

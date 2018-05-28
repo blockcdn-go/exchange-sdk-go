@@ -22,7 +22,6 @@ func main() {
 		}
 	}{}
 	json.Unmarshal(js, &cjs)
-
 	pxy, _ := url.Parse("http://127.0.0.1:1080")
 
 	//ctx, _ := context.WithCancel(context.Background())
@@ -72,6 +71,10 @@ func main() {
 	// 	panic(err)
 	// }
 	// fmt.Printf("%#v\n", kl)
+
+	// pass
+	res6, err := b.Account()
+	fmt.Println("Account:", res6, err)
 
 	// pass
 	k1, ke1 := b.Klines(binance.KlinesRequest{Symbol: "BTCUSDT", Interval: binance.Minute, Limit: 10})
@@ -129,13 +132,6 @@ func main() {
 		Timestamp: time.Now(),
 	})
 	fmt.Println("cancel order:", res3, err)
-
-	// pass
-	res6, err := b.Account(binance.AccountRequest{
-		RecvWindow: 5 * time.Second,
-		Timestamp:  time.Now(),
-	})
-	fmt.Println("Account:", res6, err)
 
 	res7, err := b.MyTrades(binance.MyTradesRequest{
 		Symbol:     "BNBETH",
