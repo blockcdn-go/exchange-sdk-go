@@ -1,7 +1,12 @@
 package huobi
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 )
 
 // SubMarketKLine 查询市场K线图
@@ -27,6 +32,51 @@ func (c *WSSClient) SubMarketKLine(symbol string, period string) (<-chan []byte,
 	result := make(chan []byte)
 	go c.start(topic, cid, result)
 	return result, nil
+}
+
+// ReqMarketKline websocket 查询kline
+func (c *WSSClient) ReqMarketKline(symbol string, period string) ([]Kline, error) {
+	_, conn, err := c.connect()
+	if err != nil {
+		return nil, err
+	}
+
+	topic := fmt.Sprintf("market.%s.kline.%s", symbol, period)
+	req := struct {
+		Topic string `json:"req"`
+		ID    string `json:"id"`
+		From  int64  `json:"from,omitempty"`
+		To    int64  `json:"to,omitempty"`
+	}{Topic: topic, ID: c.generateClientID()}
+
+	err = conn.WriteJSON(req)
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+	_, msg, err := conn.ReadMessage()
+	if err != nil {
+		return nil, err
+	}
+	buf := bytes.NewBuffer(msg)
+	gz, err := gzip.NewReader(buf)
+	if err != nil {
+		return nil, err
+	}
+	message, _ := ioutil.ReadAll(gz)
+	rsp := struct {
+		Status string  `json:"status"`
+		Data   []Kline `json:"data"`
+		Errmsg string  `json:"err-msg"`
+	}{}
+	err = json.Unmarshal(message, &rsp)
+	if err != nil {
+		return nil, err
+	}
+	if rsp.Status != "ok" {
+		return nil, errors.New("huobipro websocket kline error:" + rsp.Errmsg)
+	}
+	return rsp.Data, nil
 }
 
 // SubMarketDepth 查询市场深度数据

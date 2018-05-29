@@ -38,9 +38,9 @@ func main() {
 	cfg := &config.Config{}
 	cfg.WithAPIKey(cjs.Huobi.APIKey)
 	cfg.WithSecret(cjs.Huobi.APISec)
-	c := huobi.NewClient(cfg)
-	r1, e1 := c.GetAllAccountID()
-	fmt.Println("GetAllAccountID: ", r1, e1)
+	//c := huobi.NewClient(cfg)
+	//r1, e1 := c.GetAllAccountID()
+	//fmt.Println("GetAllAccountID: ", r1, e1)
 
 	//	r2, e2 := c.BalanceInfo(false, 3270437)
 	//	fmt.Println("BalanceInfo: ", r2, e2)
@@ -71,6 +71,9 @@ func main() {
 	cfg.WithWSSDialer(dialer)
 	wss := huobi.NewWSSClient(cfg)
 	symbol := "btcusdt"
+
+	kl, err := wss.ReqMarketKline(symbol, "5min")
+	fmt.Println(kl, err)
 	msgCh, err := wss.SubMarketKLine(symbol, huobi.Period1Min)
 	if err != nil {
 		log.Fatal("query error: ", err)

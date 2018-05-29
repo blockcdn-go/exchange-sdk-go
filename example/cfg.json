@@ -1,9 +1,0 @@
-
-{
-    "Binance":{"APIKey":"X4gV04iX86rr4a0urODBhQrGs0us2MTF5VyELvqE8uGvzM7LtXqg3ckqsevoZKRe",
-            "APISec":"1XlcmtmbGRMmqdDoxeRuzkTYXJZECu1OOF4q1toanmxWFVPjWOJPxPZeDj2jvpRS"},
-    "Gate":{"APIKey":"BBE2782F-69D1-445A-96E0-31D8DA35242E",
-            "APISec":"00d37f5cb1a66f3329dca89260a0ee302e4ed9285f93caf6bd22a1d116aa4301"},
-    "Huobi":{"APIKey":"c4299337-78f7c704-96e370ad-9f8fa",
-        "APISec":"dc442c61-f6cb0dac-14091e27-4b955"}
-}
