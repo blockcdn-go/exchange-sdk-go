@@ -17,7 +17,7 @@ type Account struct {
 type Kline struct {
 	Base      string
 	Quote     string
-	Timestamp float64 // 时间戳
+	Timestamp float64 `json:"id"`    // 时间戳
 	Volume    float64 `json:"vol"`   // 交易量
 	Close     float64 `json:"close"` // 收盘价
 	High      float64 `json:"high"`  // 最高价
