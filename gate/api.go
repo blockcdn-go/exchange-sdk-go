@@ -5,13 +5,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/blockcdn-go/exchange-sdk-go/global"
 	"github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
 )
 
-// MarketList 交易市场详细行情接口
-func (c *Client) MarketList() ([]MarketListResponse, error) {
+// GetAllSymbol 交易市场详细行情接口
+func (c *Client) GetAllSymbol() ([]global.TradeSymbol, error) {
 	var result struct {
 		Result string               `json:"result"`
 		Data   []MarketListResponse `json:"data"`
@@ -20,7 +22,14 @@ func (c *Client) MarketList() ([]MarketListResponse, error) {
 	if e != nil {
 		return nil, e
 	}
-	return result.Data, nil
+	r := []global.TradeSymbol{}
+	for _, s := range result.Data {
+		r = append(r, global.TradeSymbol{
+			Base:  s.CurrA,
+			Quote: s.CurrB,
+		})
+	}
+	return r, nil
 }
 
 // TickerInfo 获取行情ticker
@@ -71,30 +80,31 @@ func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 	return r, nil
 }
 
-// KlineInfo 获取k线数据
-func (c *Client) KlineInfo(base, quote, period string) ([]Kline, error) {
+// GetKline 获取k线数据
+func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
 	groupSec := 60
 	rangeHour := 1
-	if period == "5m" {
+	if req.Period == "5m" {
 		groupSec = 300
 		rangeHour = 12
-	} else if period == "15m" {
+	} else if req.Period == "15m" {
 		groupSec = 900
 		rangeHour = 24
-	} else if period == "30m" {
+	} else if req.Period == "30m" {
 		groupSec = 1800
 		rangeHour = 48
-	} else if period == "1h" {
+	} else if req.Period == "1h" {
 		groupSec = 3600
 		rangeHour = 96
-	} else if period == "8h" {
+	} else if req.Period == "8h" {
 		groupSec = 28800
 		rangeHour = 768
-	} else if period == "1d" {
+	} else if req.Period == "1d" {
 		groupSec = 86400
 		rangeHour = 2304
 	}
-	path := fmt.Sprintf("/api2/1/candlestick2/%s_%s?group_sec=%d&range_hour=%d", base, quote, groupSec, rangeHour)
+	sym := strings.ToLower(req.Base + "_" + req.Quote)
+	path := fmt.Sprintf("/api2/1/candlestick2/%s?group_sec=%d&range_hour=%d", sym, groupSec, rangeHour)
 	rsp := struct {
 		Result  string      `json:"result"`
 		Message string      `json:"message"`
@@ -109,16 +119,14 @@ func (c *Client) KlineInfo(base, quote, period string) ([]Kline, error) {
 	if rsp.Result != "true" {
 		return nil, fmt.Errorf(rsp.Message)
 	}
-	k := make([]Kline, 0)
+	k := []global.Kline{}
 	for i := 0; i < len(rsp.Data); i++ {
 		if len(rsp.Data[i]) < 6 {
 			fmt.Println("gate len(rsp.Data[i]) < 6")
 			continue
 		}
-		k = append(k, Kline{
-			Base:      base,
-			Quote:     quote,
-			Timestamp: rsp.Data[i][0],
+		k = append(k, global.Kline{
+			Timestamp: int64(rsp.Data[i][0]),
 			Volume:    rsp.Data[i][1],
 			Close:     rsp.Data[i][2],
 			High:      rsp.Data[i][3],
@@ -156,8 +164,8 @@ func (c *Client) LateTradeInfo(base, quote string) ([]LateTrade, error) {
 //////////////////////////////////////////////////////////////////////////
 /// 交易类接口
 
-// BalanceInfo 获取帐号资金余额
-func (c *Client) BalanceInfo() (Balance, error) {
+// GetFund 获取帐号资金余额
+func (c *Client) GetFund(global.FundReq) ([]global.Fund, error) {
 	path := "/api2/1/private/balances"
 	b := struct {
 		Result    string            `json:"result"`
@@ -166,22 +174,47 @@ func (c *Client) BalanceInfo() (Balance, error) {
 	}{}
 	e := c.httpReq("POST", path, nil, &b)
 	if e != nil {
-		return Balance{}, e
+		return nil, e
 	}
 	if b.Result != "true" {
-		return Balance{}, fmt.Errorf("get balances result false")
+		return nil, fmt.Errorf("get balances result false")
 	}
 	var r Balance
 	r.Available = make(map[string]float64)
 	r.Locked = make(map[string]float64)
 
 	if ce := convkv(r.Available, b.Available); ce != nil {
-		return Balance{}, ce
+		return nil, ce
 	}
 	if ce := convkv(r.Locked, b.Locked); ce != nil {
-		return Balance{}, ce
+		return nil, ce
 	}
-	return r, nil
+
+	ir := []global.Fund{}
+	for k, av := range r.Available {
+		ir = append(ir, global.Fund{
+			Base:      k,
+			Available: av,
+		})
+	}
+
+	for k, fz := range r.Locked {
+		find := false
+		for i := 0; i < len(ir); i++ {
+			if ir[i].Base == k {
+				ir[i].Frozen += fz
+				find = true
+				break
+			}
+		}
+		if !find {
+			ir = append(ir, global.Fund{
+				Base:   k,
+				Frozen: fz,
+			})
+		}
+	}
+	return ir, nil
 }
 
 // DepositAddr 获取充值地址
@@ -232,31 +265,39 @@ func (c *Client) DepositsWithdrawals() ([]DWInfo, []DWInfo, error) {
 // @parm direction 0 - buy, 1 - sell
 // @parm price 	买卖价格 ps: minimum 10 usdt.
 // @parm num	买卖币数量
-func (c *Client) InsertOrder(symbol string, direction int, price, num float64) (InsertOrderRsp, error) {
+func (c *Client) InsertOrder(req global.InsertReq) (global.InsertRsp, error) {
 	path := "/api2/1/private/"
-	if direction == 0 {
+	if req.Direction == 0 {
 		path += "buy"
 	} else {
 		path += "sell"
 	}
+	symbol := strings.ToLower(req.Base + "_" + req.Quote)
 	arg := struct {
 		CurrencyPair string  `url:"currencyPair"`
 		Rate         float64 `url:"rate"`
 		Amount       float64 `url:"amount"`
-	}{symbol, price, num}
-	r := InsertOrderRsp{Direction: direction}
+	}{symbol, req.Price, req.Num}
+	r := InsertOrderRsp{Direction: req.Direction}
 	e := c.httpReq("POST", path, arg, &r)
-	return r, e
+	if e != nil {
+		return global.InsertRsp{}, e
+	}
+	if r.Result != "true" {
+		return global.InsertRsp{}, fmt.Errorf("gateio error: %s", r.Msg)
+	}
+	return global.InsertRsp{OrderNo: r.OrderNo}, e
 }
 
 // CancelOrder 取消订单
 // 通过测试，第一个参数对结果没有影响，只要orderno正确就能取消订单，
 // 但是如果第一个参数填入错误的代码将返回错误，但是订单依然被取消了
-func (c *Client) CancelOrder(symbol, orderNo string) error {
+func (c *Client) CancelOrder(req global.CancelReq) error {
+	symbol := strings.ToLower(req.Base + "_" + req.Quote)
 	arg := struct {
 		OrderNumber  string `url:"orderNumber"`
 		CurrencyPair string `url:"currencyPair"`
-	}{orderNo, symbol}
+	}{req.OrderNo, symbol}
 
 	r := struct {
 		Result  interface{} `json:"result"` // 未按文档说明的类型返回
@@ -285,12 +326,13 @@ func (c *Client) CancelOrder(symbol, orderNo string) error {
 	return nil
 }
 
-// OrderStatusInfo 获取订单状态
-func (c *Client) OrderStatusInfo(symbol, orderNo string) (OrderInfo, error) {
+// OrderStatus 获取订单状态
+func (c *Client) OrderStatus(req global.StatusReq) (global.StatusRsp, error) {
+	symbol := strings.ToLower(req.Base + "_" + req.Quote)
 	arg := struct {
 		OrderNumber  string `url:"orderNumber"`
 		CurrencyPair string `url:"currencyPair"`
-	}{orderNo, symbol}
+	}{req.OrderNo, symbol}
 	r := struct {
 		Result  string    `json:"result"`
 		Message string    `json:"message"`
@@ -298,12 +340,34 @@ func (c *Client) OrderStatusInfo(symbol, orderNo string) (OrderInfo, error) {
 	}{}
 	e := c.httpReq("POST", "/api2/1/private/getOrder", arg, &r)
 	if e != nil {
-		return OrderInfo{}, e
+		return global.StatusRsp{}, e
 	}
 	if r.Result != "true" {
-		return OrderInfo{}, fmt.Errorf(r.Message)
+		return global.StatusRsp{}, fmt.Errorf(r.Message)
 	}
-	return r.Order, nil
+
+	or := &r.Order
+	m := global.StatusRsp{}
+	n, e := strconv.ParseFloat(or.TradeNum, 64)
+	if e != nil {
+		return m, e
+	}
+	m.TradePrice = or.TradePrice
+	m.TradeNum = n
+	if n != 0. {
+		m.Status = global.HALFTRADE
+		m.StatusMsg = "部分成交"
+	}
+	if or.Status == "done" {
+		m.Status = global.COMPLETETRADE
+		m.StatusMsg = "完全成交"
+	}
+	if or.Status == "cancelled" {
+		m.Status = global.CANCELED
+		m.StatusMsg = "已撤单"
+	}
+	fmt.Printf("gateio order status %+v\n", or)
+	return m, nil
 }
 
 // HangingOrderInfo 获取我的当前挂单列表

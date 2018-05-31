@@ -1,8 +1,12 @@
 package binance
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/blockcdn-go/exchange-sdk-go/global"
 )
 
 type rawExecutedOrder struct {
@@ -21,24 +25,30 @@ type rawExecutedOrder struct {
 	Time          float64 `json:"time"`
 }
 
-func (as *apiService) NewOrder(or NewOrderRequest) (*ProcessedOrder, error) {
+func (as *apiService) InsertOrder(or global.InsertReq) (global.InsertRsp, error) {
 	params := make(map[string]string)
-	params["symbol"] = or.Symbol
-	params["side"] = string(or.Side)
-	params["type"] = string(or.Type)
-	params["timeInForce"] = string(or.TimeInForce)
-	params["quantity"] = strconv.FormatFloat(or.Quantity, 'f', -1, 64)
+	params["symbol"] = strings.ToUpper(or.Base + or.Quote)
+	params["side"] = string(SideBuy)
+	if or.Direction == 1 {
+		params["side"] = string(SideSell)
+	}
+	params["type"] = string(TypeLimit)
+	if or.Type == 1 {
+		params["type"] = string(TypeMarket)
+	}
+	params["timeInForce"] = string(GTC)
+	params["quantity"] = strconv.FormatFloat(or.Num, 'f', -1, 64)
 	params["price"] = strconv.FormatFloat(or.Price, 'f', -1, 64)
-	params["timestamp"] = strconv.FormatInt(unixMillis(or.Timestamp), 10)
-	if or.NewClientOrderID != "" {
-		params["newClientOrderId"] = or.NewClientOrderID
-	}
-	if or.StopPrice != 0 {
-		params["stopPrice"] = strconv.FormatFloat(or.StopPrice, 'f', -1, 64)
-	}
-	if or.IcebergQty != 0 {
-		params["icebergQty"] = strconv.FormatFloat(or.IcebergQty, 'f', -1, 64)
-	}
+	params["timestamp"] = strconv.FormatInt(time.Now().Unix()*1000, 10)
+	// if or.NewClientOrderID != "" {
+	// 	params["newClientOrderId"] = or.NewClientOrderID
+	// }
+	// if or.StopPrice != 0 {
+	// 	params["stopPrice"] = strconv.FormatFloat(or.StopPrice, 'f', -1, 64)
+	// }
+	// if or.IcebergQty != 0 {
+	// 	params["icebergQty"] = strconv.FormatFloat(or.IcebergQty, 'f', -1, 64)
+	// }
 	rawOrder := struct {
 		Symbol        string  `json:"symbol"`
 		OrderID       int64   `json:"orderId"`
@@ -47,88 +57,91 @@ func (as *apiService) NewOrder(or NewOrderRequest) (*ProcessedOrder, error) {
 	}{}
 	err := as.request("POST", "api/v3/order", params, &rawOrder, true, true)
 	if err != nil {
-		return nil, err
+		return global.InsertRsp{}, err
 	}
-	t, err := timeFromUnixTimestampFloat(rawOrder.TransactTime)
-	if err != nil {
-		return nil, err
-	}
-	return &ProcessedOrder{
-		Symbol:        rawOrder.Symbol,
-		OrderID:       rawOrder.OrderID,
-		ClientOrderID: rawOrder.ClientOrderID,
-		TransactTime:  t,
+	return global.InsertRsp{
+		OrderNo: strconv.FormatInt(rawOrder.OrderID, 10),
 	}, nil
+
+	// t, err := timeFromUnixTimestampFloat(rawOrder.TransactTime)
+	// if err != nil {
+	// 	return global.InsertRsp{}, err
+	// }
+
+	// return &ProcessedOrder{
+	// 	Symbol:        rawOrder.Symbol,
+	// 	OrderID:       rawOrder.OrderID,
+	// 	ClientOrderID: rawOrder.ClientOrderID,
+	// 	TransactTime:  t,
+	// }, nil
 }
 
-func (as *apiService) NewOrderTest(or NewOrderRequest) error {
+func (as *apiService) OrderStatus(qor global.StatusReq) (global.StatusRsp, error) {
 	params := make(map[string]string)
-	params["symbol"] = or.Symbol
-	params["side"] = string(or.Side)
-	params["type"] = string(or.Type)
-	params["timeInForce"] = string(or.TimeInForce)
-	params["quantity"] = strconv.FormatFloat(or.Quantity, 'f', -1, 64)
-	params["price"] = strconv.FormatFloat(or.Price, 'f', -1, 64)
-	params["timestamp"] = strconv.FormatInt(unixMillis(or.Timestamp), 10)
-	if or.NewClientOrderID != "" {
-		params["newClientOrderId"] = or.NewClientOrderID
+	params["symbol"] = strings.ToUpper(qor.Base + qor.Quote)
+	params["timestamp"] = strconv.FormatInt(time.Now().Unix()*1000, 10)
+	if qor.OrderNo != "" {
+		params["orderId"] = qor.OrderNo
 	}
-	if or.StopPrice != 0 {
-		params["stopPrice"] = strconv.FormatFloat(or.StopPrice, 'f', -1, 64)
-	}
-	if or.IcebergQty != 0 {
-		params["icebergQty"] = strconv.FormatFloat(or.IcebergQty, 'f', -1, 64)
-	}
-
-	err := as.request("POST", "api/v3/order/test", params, nil, true, true)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (as *apiService) QueryOrder(qor QueryOrderRequest) (*ExecutedOrder, error) {
-	params := make(map[string]string)
-	params["symbol"] = qor.Symbol
-	params["timestamp"] = strconv.FormatInt(unixMillis(qor.Timestamp), 10)
-	if qor.OrderID != 0 {
-		params["orderId"] = strconv.FormatInt(qor.OrderID, 10)
-	}
-	if qor.OrigClientOrderID != "" {
-		params["origClientOrderId"] = qor.OrigClientOrderID
-	}
-	if qor.RecvWindow != 0 {
-		params["recvWindow"] = strconv.FormatInt(recvWindow(qor.RecvWindow), 10)
-	}
+	// if qor.OrigClientOrderID != "" {
+	// 	params["origClientOrderId"] = qor.OrigClientOrderID
+	// }
+	// if qor.RecvWindow != 0 {
+	// 	params["recvWindow"] = strconv.FormatInt(recvWindow(qor.RecvWindow), 10)
+	// }
 	rawOrder := &rawExecutedOrder{}
 	err := as.request("GET", "api/v3/order", params, rawOrder, true, true)
 	if err != nil {
-		return nil, err
+		return global.StatusRsp{}, err
 	}
 
-	eo, err := executedOrderFromRaw(rawOrder)
+	or, err := executedOrderFromRaw(rawOrder)
 	if err != nil {
-		return nil, err
+		return global.StatusRsp{}, err
 	}
-	return eo, nil
+	m := global.StatusRsp{}
+	m.TradePrice = or.Price
+	m.TradeNum = or.ExecutedQty
+	if or.ExecutedQty != 0. || or.Status == StatusPartiallyFilled {
+		m.Status = global.HALFTRADE
+		m.StatusMsg = "部分成交"
+	}
+	if or.ExecutedQty == or.OrigQty || or.Status == StatusFilled {
+		m.Status = global.COMPLETETRADE
+		m.StatusMsg = "完全成交"
+	}
+	if or.Status == StatusCancelled {
+		m.Status = global.CANCELED
+		m.StatusMsg = "已撤单"
+	}
+	if or.Status == StatusRejected {
+		m.Status = global.FAILED
+		m.StatusMsg = "订单被拒绝"
+	}
+	if or.Status == StatusExpired {
+		m.Status = global.FAILED
+		m.StatusMsg = "订单超时"
+	}
+	fmt.Printf("binance order status %+v\n", or)
+	return m, nil
 }
 
-func (as *apiService) CancelOrder(cor CancelOrderRequest) (*CanceledOrder, error) {
+func (as *apiService) CancelOrder(cor global.CancelReq) error {
 	params := make(map[string]string)
-	params["symbol"] = cor.Symbol
-	params["timestamp"] = strconv.FormatInt(unixMillis(cor.Timestamp), 10)
-	if cor.OrderID != 0 {
-		params["orderId"] = strconv.FormatInt(cor.OrderID, 10)
+	params["symbol"] = strings.ToUpper(cor.Base + cor.Quote)
+	params["timestamp"] = strconv.FormatInt(unixMillis(time.Now()), 10)
+	if cor.OrderNo != "" {
+		params["orderId"] = cor.OrderNo
 	}
-	if cor.OrigClientOrderID != "" {
-		params["origClientOrderId"] = cor.OrigClientOrderID
-	}
-	if cor.NewClientOrderID != "" {
-		params["newClientOrderId"] = cor.NewClientOrderID
-	}
-	if cor.RecvWindow != 0 {
-		params["recvWindow"] = strconv.FormatInt(recvWindow(cor.RecvWindow), 10)
-	}
+	// if cor.OrigClientOrderID != "" {
+	// 	params["origClientOrderId"] = cor.OrigClientOrderID
+	// }
+	// if cor.NewClientOrderID != "" {
+	// 	params["newClientOrderId"] = cor.NewClientOrderID
+	// }
+	// if cor.RecvWindow != 0 {
+	// 	params["recvWindow"] = strconv.FormatInt(recvWindow(cor.RecvWindow), 10)
+	// }
 	rawCanceledOrder := struct {
 		Symbol            string `json:"symbol"`
 		OrigClientOrderID string `json:"origClientOrderId"`
@@ -136,15 +149,16 @@ func (as *apiService) CancelOrder(cor CancelOrderRequest) (*CanceledOrder, error
 		ClientOrderID     string `json:"clientOrderId"`
 	}{}
 	err := as.request("DELETE", "api/v3/order", params, &rawCanceledOrder, true, true)
-	if err != nil {
-		return nil, err
-	}
-	return &CanceledOrder{
-		Symbol:            rawCanceledOrder.Symbol,
-		OrigClientOrderID: rawCanceledOrder.OrigClientOrderID,
-		OrderID:           rawCanceledOrder.OrderID,
-		ClientOrderID:     rawCanceledOrder.ClientOrderID,
-	}, nil
+	return err
+	// if err != nil {
+	// 	return err
+	// }
+	// return &CanceledOrder{
+	// 	Symbol:            rawCanceledOrder.Symbol,
+	// 	OrigClientOrderID: rawCanceledOrder.OrigClientOrderID,
+	// 	OrderID:           rawCanceledOrder.OrderID,
+	// 	ClientOrderID:     rawCanceledOrder.ClientOrderID,
+	// }, nil
 }
 
 func (as *apiService) OpenOrders(oor OpenOrdersRequest) ([]*ExecutedOrder, error) {
@@ -200,7 +214,7 @@ func (as *apiService) AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error) 
 	return eoc, nil
 }
 
-func (as *apiService) Account() (*Account, error) {
+func (as *apiService) GetFund(global.FundReq) ([]global.Fund, error) {
 	params := make(map[string]string)
 	params["timestamp"] = strconv.FormatInt(unixMillis(time.Now()), 10)
 	params["recvWindow"] = strconv.FormatInt(recvWindow(5*time.Second), 10)
@@ -224,15 +238,17 @@ func (as *apiService) Account() (*Account, error) {
 		return nil, err
 	}
 
-	acc := &Account{
-		MakerCommision:  rawAccount.MakerCommision,
-		TakerCommision:  rawAccount.TakerCommission,
-		BuyerCommision:  rawAccount.BuyerCommission,
-		SellerCommision: rawAccount.SellerCommission,
-		CanTrade:        rawAccount.CanTrade,
-		CanWithdraw:     rawAccount.CanWithdraw,
-		CanDeposit:      rawAccount.CanDeposit,
-	}
+	// acc := &Account{
+	// 	MakerCommision:  rawAccount.MakerCommision,
+	// 	TakerCommision:  rawAccount.TakerCommission,
+	// 	BuyerCommision:  rawAccount.BuyerCommission,
+	// 	SellerCommision: rawAccount.SellerCommission,
+	// 	CanTrade:        rawAccount.CanTrade,
+	// 	CanWithdraw:     rawAccount.CanWithdraw,
+	// 	CanDeposit:      rawAccount.CanDeposit,
+	// }
+
+	ar := []global.Fund{}
 	for _, b := range rawAccount.Balances {
 		f, err := floatFromString(b.Free)
 		if err != nil {
@@ -242,14 +258,19 @@ func (as *apiService) Account() (*Account, error) {
 		if err != nil {
 			return nil, err
 		}
-		acc.Balances = append(acc.Balances, &Balance{
-			Asset:  b.Asset,
-			Free:   f,
-			Locked: l,
+		// acc.Balances = append(acc.Balances, &Balance{
+		// 	Asset:  b.Asset,
+		// 	Free:   f,
+		// 	Locked: l,
+		// })
+		ar = append(ar, global.Fund{
+			Base:      b.Asset,
+			Available: f,
+			Frozen:    l,
 		})
 	}
 
-	return acc, nil
+	return ar, nil
 }
 
 func (as *apiService) MyTrades(mtr MyTradesRequest) ([]*Trade, error) {

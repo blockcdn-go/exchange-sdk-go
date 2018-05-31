@@ -2,7 +2,10 @@ package binance
 
 import (
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/blockcdn-go/exchange-sdk-go/global"
 )
 
 func (as *apiService) Ping() error {
@@ -31,7 +34,7 @@ func (as *apiService) Time() (time.Time, error) {
 	return t, nil
 }
 
-func (as *apiService) ExchangeInfo() ([]TradePair, error) {
+func (as *apiService) GetAllSymbol() ([]global.TradeSymbol, error) {
 	r := &struct {
 		Symbols []TradePair `json:"symbols"`
 	}{}
@@ -39,7 +42,14 @@ func (as *apiService) ExchangeInfo() ([]TradePair, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.Symbols, nil
+	rr := []global.TradeSymbol{}
+	for _, s := range r.Symbols {
+		rr = append(rr, global.TradeSymbol{
+			Base:  s.Base,
+			Quote: s.Quote,
+		})
+	}
+	return rr, nil
 }
 
 func (as *apiService) OrderBook(obr OrderBookRequest) (*OrderBook, error) {
@@ -147,25 +157,25 @@ func (as *apiService) AggTrades(atr AggTradesRequest) ([]*AggTrade, error) {
 	return aggTrades, nil
 }
 
-func (as *apiService) Klines(kr KlinesRequest) ([]*Kline, error) {
+func (as *apiService) GetKline(kr global.KlineReq) ([]global.Kline, error) {
 	params := make(map[string]string)
-	params["symbol"] = kr.Symbol
-	params["interval"] = string(kr.Interval)
-	if kr.Limit != 0 {
-		params["limit"] = strconv.Itoa(kr.Limit)
+	params["symbol"] = strings.ToUpper(kr.Base + kr.Quote)
+	params["interval"] = string(kr.Period)
+	if kr.Count != 0 {
+		params["limit"] = strconv.FormatInt(kr.Count, 10)
 	}
-	if kr.StartTime != 0 {
-		params["startTime"] = strconv.FormatInt(kr.StartTime, 10)
-	}
-	if kr.EndTime != 0 {
-		params["endTime"] = strconv.FormatInt(kr.EndTime, 10)
-	}
+	// if kr.Begin != "" {
+	// 	params["startTime"] = strconv.FormatInt(kr.StartTime, 10)
+	// }
+	// if kr.End != "" {
+	// 	params["endTime"] = strconv.FormatInt(kr.EndTime, 10)
+	// }
 	rawKlines := [][]interface{}{}
 	err := as.request("GET", "api/v1/klines", params, &rawKlines, false, false)
 	if err != nil {
 		return nil, err
 	}
-	klines := []*Kline{}
+	klines := []global.Kline{}
 	for _, k := range rawKlines {
 		ot, err := timeFromUnixTimestampFloat(k[0])
 		if err != nil {
@@ -191,38 +201,41 @@ func (as *apiService) Klines(kr KlinesRequest) ([]*Kline, error) {
 		if err != nil {
 			return nil, warpError(err, "cannot parse Kline.Volume")
 		}
-		ct, err := timeFromUnixTimestampFloat(k[6])
-		if err != nil {
-			return nil, warpError(err, "cannot parse Kline.CloseTime")
-		}
-		qav, err := floatFromString(k[7])
-		if err != nil {
-			return nil, warpError(err, "cannot parse Kline.QuoteAssetVolume")
-		}
-		not, ok := k[8].(float64)
-		if !ok {
-			return nil, warpError(err, "cannot parse Kline.NumberOfTrades")
-		}
-		tbbav, err := floatFromString(k[9])
-		if err != nil {
-			return nil, warpError(err, "cannot parse Kline.TakerBuyBaseAssetVolume")
-		}
-		tbqav, err := floatFromString(k[10])
-		if err != nil {
-			return nil, warpError(err, "cannot parse Kline.TakerBuyQuoteAssetVolume")
-		}
-		klines = append(klines, &Kline{
-			OpenTime:                 ot,
-			Open:                     open,
-			High:                     high,
-			Low:                      low,
-			Close:                    cls,
-			Volume:                   volume,
-			CloseTime:                ct,
-			QuoteAssetVolume:         qav,
-			NumberOfTrades:           int(not),
-			TakerBuyBaseAssetVolume:  tbbav,
-			TakerBuyQuoteAssetVolume: tbqav,
+		// ct, err := timeFromUnixTimestampFloat(k[6])
+		// if err != nil {
+		// 	return nil, warpError(err, "cannot parse Kline.CloseTime")
+		// }
+		// qav, err := floatFromString(k[7])
+		// if err != nil {
+		// 	return nil, warpError(err, "cannot parse Kline.QuoteAssetVolume")
+		// }
+		// not, ok := k[8].(float64)
+		// if !ok {
+		// 	return nil, warpError(err, "cannot parse Kline.NumberOfTrades")
+		// }
+		// tbbav, err := floatFromString(k[9])
+		// if err != nil {
+		// 	return nil, warpError(err, "cannot parse Kline.TakerBuyBaseAssetVolume")
+		// }
+		// tbqav, err := floatFromString(k[10])
+		// if err != nil {
+		// 	return nil, warpError(err, "cannot parse Kline.TakerBuyQuoteAssetVolume")
+		// }
+		klines = append(klines, global.Kline{
+			//OpenTime:                 ot,
+			Base:      kr.Base,
+			Quote:     kr.Quote,
+			Open:      open,
+			High:      high,
+			Low:       low,
+			Close:     cls,
+			Volume:    volume,
+			Timestamp: ot.Unix() * 1000,
+			//CloseTime:                ct,
+			//QuoteAssetVolume:         qav,
+			//NumberOfTrades:           int(not),
+			//TakerBuyBaseAssetVolume:  tbbav,
+			//TakerBuyQuoteAssetVolume: tbqav,
 		})
 	}
 	return klines, nil

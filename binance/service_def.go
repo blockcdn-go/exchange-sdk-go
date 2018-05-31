@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/blockcdn-go/exchange-sdk-go/global"
 )
 
 // Service represents service layer for Binance API.
@@ -21,14 +23,14 @@ type Service interface {
 	Ping() error
 	// Time returns server time.
 	Time() (time.Time, error)
-	// ExchangeInfo 所有的可交易对
-	ExchangeInfo() ([]TradePair, error)
+	// GetAllSymbol 所有的可交易对
+	GetAllSymbol() ([]global.TradeSymbol, error)
 	// OrderBook returns list of orders.
 	OrderBook(obr OrderBookRequest) (*OrderBook, error)
 	// AggTrades returns compressed/aggregate list of trades.
 	AggTrades(atr AggTradesRequest) ([]*AggTrade, error)
-	// Klines returns klines/candlestick data.
-	Klines(kr KlinesRequest) ([]*Kline, error)
+	// GetKline returns klines/candlestick data.
+	GetKline(global.KlineReq) ([]global.Kline, error)
 	// Ticker24 returns 24hr price change statistics.
 	Ticker24(symbol string) (*Ticker24, error)
 	// TickerAllPrices returns ticker data for symbols.
@@ -36,21 +38,19 @@ type Service interface {
 	// TickerAllBooks returns tickers for all books.
 	TickerAllBooks() ([]*BookTicker, error)
 
-	// NewOrder places new order and returns ProcessedOrder.
-	NewOrder(nor NewOrderRequest) (*ProcessedOrder, error)
-	// NewOrder places testing order.
-	NewOrderTest(nor NewOrderRequest) error
-	// QueryOrder returns data about existing order.
-	QueryOrder(qor QueryOrderRequest) (*ExecutedOrder, error)
+	// InsertOrder places new order and returns ProcessedOrder.
+	InsertOrder(global.InsertReq) (global.InsertRsp, error)
+	// OrderStatus returns data about existing order.
+	OrderStatus(global.StatusReq) (global.StatusRsp, error)
 	// CancelOrder cancels order.
-	CancelOrder(cor CancelOrderRequest) (*CanceledOrder, error)
+	CancelOrder(global.CancelReq) error
 	// OpenOrders returns list of open orders.
 	OpenOrders(oor OpenOrdersRequest) ([]*ExecutedOrder, error)
 	// AllOrders returns list of all previous orders.
 	AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error)
 
-	// Account returns account data.
-	Account() (*Account, error)
+	// GetFund returns account data.
+	GetFund(global.FundReq) ([]global.Fund, error)
 	// MyTrades list user's trades.
 	MyTrades(mtr MyTradesRequest) ([]*Trade, error)
 	// Withdraw executes withdrawal.
