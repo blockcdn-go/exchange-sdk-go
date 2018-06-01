@@ -132,6 +132,16 @@ type CancelReq struct {
 	OrderNo string `json:"orderno"`
 }
 
+// WSif websocket实时推送需要实现的接口
+type WSif interface {
+	// 订阅ticker
+	SubTicker(TradeSymbol) (chan Ticker, error)
+	// 订阅深度行情
+	SubDepth(TradeSymbol) (chan Depth, error)
+	// 订阅最近成交
+	SubLateTrade(TradeSymbol) (chan LateTrade, error)
+}
+
 // APIif 各个交易所需要实现的接口
 type APIif interface {
 	//////////////////////////////////////////////////////////////
