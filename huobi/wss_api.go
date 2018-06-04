@@ -17,34 +17,9 @@ import (
 	"github.com/blockcdn-go/exchange-sdk-go/global"
 )
 
-// SubMarketKLine 查询市场K线图
-// period 可选 1min, 5min, 15min, 30min, 60min, 1day, 1mon, 1week, 1year
-func (c *WSSClient) SubMarketKLine(symbol string, period string) (<-chan []byte, error) {
-	cid, conn, err := c.connect()
-	if err != nil {
-		return nil, err
-	}
-
-	topic := fmt.Sprintf("market.%s.kline.%s", symbol, period)
-	req := struct {
-		Topic string `json:"sub"`
-		ID    string `json:"id"`
-	}{topic, c.generateClientID()}
-
-	err = conn.WriteJSON(req)
-	if err != nil {
-		c.Close()
-		return nil, err
-	}
-
-	result := make(chan []byte)
-	go c.start(topic, cid, result)
-	return result, nil
-}
-
 // GetKline websocket 查询kline
 func (c *WSSClient) GetKline(req global.KlineReq) ([]global.Kline, error) {
-	_, conn, err := c.connect()
+	conn, err := c.connect()
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +44,6 @@ func (c *WSSClient) GetKline(req global.KlineReq) ([]global.Kline, error) {
 
 	err = conn.WriteJSON(kreq)
 	if err != nil {
-		c.Close()
 		return nil, err
 	}
 	_, msg, err := conn.ReadMessage()
@@ -114,10 +88,11 @@ func (c *WSSClient) GetKline(req global.KlineReq) ([]global.Kline, error) {
 // type 可选值：{ step0, step1, step2, step3, step4, step5 } （合并深度0-5）；
 // step0时，不合并深度
 func (c *WSSClient) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
-	conn, err := c.wsConnect()
-	if err != nil {
-		return nil, err
+	c.once.Do(func() { c.wsConnect() })
+	if c.sock == nil {
+		return nil, errors.New("connect failed")
 	}
+
 	symbol := strings.ToLower(sreq.Base + sreq.Quote)
 
 	topic := fmt.Sprintf("market.%s.depth.%s", symbol, "step0")
@@ -126,84 +101,25 @@ func (c *WSSClient) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error)
 		ID    string `json:"id"`
 	}{topic, c.generateClientID()}
 
-	err = conn.WriteJSON(req)
+	err := c.sock.WriteJSON(req)
 	if err != nil {
-		c.Close()
 		return nil, err
 	}
 
 	ch := make(chan global.Depth, 100)
+	c.mutex.Lock()
+	c.depth[sreq] = ch
+	c.mutex.Unlock()
 
-	go func() {
-		for {
-			msg, err := c.readWSMessage(conn)
-			if err != nil {
-				log.Printf("SubDepth websocket 连接断开 %s\n", err.Error())
-				go func() {
-					for {
-						time.Sleep(5 * time.Second)
-						ch, err = c.SubDepth(sreq)
-						if err == nil {
-							log.Println("重新连接成功...")
-							return
-						}
-					}
-				}()
-				return
-			}
-			if msg == nil {
-				continue
-			}
-			// 解析数据
-
-			t := struct {
-				Ticker struct {
-					Asks [][]float64 `json:"asks"` //卖方深度
-					Bids [][]float64 `json:"bids"` //买方深度
-				} `json:"tick"`
-			}{}
-			e := json.Unmarshal(msg, &t)
-			if e != nil {
-				continue
-			}
-
-			ret := global.Depth{
-				Base:  sreq.Base,
-				Quote: sreq.Quote,
-				Asks:  make([]global.DepthPair, 0, 5),
-				Bids:  make([]global.DepthPair, 0, 5),
-			}
-			if len(t.Ticker.Asks) >= 2 && t.Ticker.Asks[0][0] > t.Ticker.Asks[1][0] {
-				// 卖 倒序
-				for end := len(t.Ticker.Asks); end > 0; end-- {
-					ret.Asks = append(ret.Asks, global.DepthPair{
-						Price: t.Ticker.Asks[end-1][0],
-						Size:  t.Ticker.Asks[end-1][1]})
-				}
-			} else {
-				for i := 0; i < len(t.Ticker.Asks); i++ {
-					ret.Asks = append(ret.Asks, global.DepthPair{Price: t.Ticker.Asks[i][0],
-						Size: t.Ticker.Asks[i][1]})
-				}
-			}
-
-			// 买
-			for i := 0; i < len(t.Ticker.Bids); i++ {
-				ret.Bids = append(ret.Bids, global.DepthPair{Price: t.Ticker.Bids[i][0],
-					Size: t.Ticker.Bids[i][1]})
-			}
-			ch <- ret
-		}
-	}()
-
+	// 直接返回
 	return ch, nil
 }
 
 // SubLateTrade 查询交易详细数据
 func (c *WSSClient) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, error) {
-	conn, err := c.wsConnect()
-	if err != nil {
-		return nil, err
+	c.once.Do(func() { c.wsConnect() })
+	if c.sock == nil {
+		return nil, errors.New("connect failed")
 	}
 	symbol := strings.ToLower(sreq.Base + sreq.Quote)
 
@@ -213,72 +129,23 @@ func (c *WSSClient) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade
 		ID    string `json:"id"`
 	}{topic, c.generateClientID()}
 
-	err = conn.WriteJSON(req)
+	err := c.sock.WriteJSON(req)
 	if err != nil {
-		c.Close()
 		return nil, err
 	}
 	ch := make(chan global.LateTrade, 100)
-	go func() {
-		for {
-			msg, err := c.readWSMessage(conn)
-			if err != nil {
-				log.Printf("SubLateTrade websocket 连接断开 %s\n", err.Error())
-				go func() {
-					for {
-						time.Sleep(5 * time.Second)
-						ch, err = c.SubLateTrade(sreq)
-						if err == nil {
-							log.Println("重新连接成功...")
-							return
-						}
-					}
-				}()
-				return
-			}
-			if msg == nil {
-				continue
-			}
-			// 解析数据
-			rsp := struct {
-				Tick struct {
-					Data []struct {
-						Price     float64 `json:"price"`
-						Time      int64   `json:"ts"`
-						Amount    float64 `json:"amount"`
-						Direction string  `json:"direction"`
-					} `json:"data"`
-				} `json:"tick"`
-			}{}
-			err = json.Unmarshal(msg, &rsp)
-			if err != nil {
-				continue
-			}
+	c.mutex.Lock()
+	c.latetrade[sreq] = ch
+	c.mutex.Unlock()
 
-			for _, d := range rsp.Tick.Data {
-				tm := time.Unix(d.Time/1000, 0)
-				dt := tm.Format("2006-01-02 03:04:05 PM")
-				lt := global.LateTrade{
-					Base:      sreq.Base,
-					Quote:     sreq.Quote,
-					DateTime:  dt,
-					Num:       d.Amount,
-					Price:     d.Price,
-					Dircetion: d.Direction,
-					Total:     d.Price * d.Amount,
-				}
-				ch <- lt
-			}
-		}
-	}()
 	return ch, nil
 }
 
 // SubTicker ...
 func (c *WSSClient) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) {
-	conn, err := c.wsConnect()
-	if err != nil {
-		return nil, err
+	c.once.Do(func() { c.wsConnect() })
+	if c.sock == nil {
+		return nil, errors.New("connect failed")
 	}
 	symbol := strings.ToLower(sreq.Base + sreq.Quote)
 	topic := fmt.Sprintf("market.%s.detail", symbol)
@@ -287,72 +154,102 @@ func (c *WSSClient) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, erro
 		ID    string `json:"id"`
 	}{topic, c.generateClientID()}
 
-	err = conn.WriteJSON(req)
+	err := c.sock.WriteJSON(req)
 	if err != nil {
-		c.Close()
 		return nil, err
 	}
 	ch := make(chan global.Ticker, 100)
+	c.mutex.Lock()
+	c.tick[sreq] = ch
+	c.mutex.Unlock()
 
+	return ch, nil
+}
+
+func (c *WSSClient) connect() (*websocket.Conn, error) {
+	u := url.URL{Scheme: "wss", Host: *c.config.WSSHost, Path: "/ws"}
+	log.Printf("huobi 连接 %s 中...\n", u.String())
+	conn, _, err := c.config.WSSDialer.Dial(u.String(), nil)
+	return conn, err
+}
+
+func (c *WSSClient) wsConnect() error {
+	c.sock = nil
+	conn, err := c.connect()
+	if err != nil {
+		c.sock = nil
+		return err
+	}
+	c.sock = conn
+
+	//在这儿进行订阅消息重放
+	if c.replay {
+		log.Printf("连接成功，进行消息重放\n")
+		for k := range c.tick {
+			symbol := strings.ToLower(k.Base + k.Quote)
+			topic := fmt.Sprintf("market.%s.detail", symbol)
+			req := struct {
+				Topic string `json:"sub"`
+				ID    string `json:"id"`
+			}{topic, c.generateClientID()}
+			err := c.sock.WriteJSON(req)
+			if err != nil {
+				log.Printf("订阅消息重放失败 %s %s\n", topic, err.Error())
+			}
+		}
+
+		//
+		for k := range c.depth {
+			symbol := strings.ToLower(k.Base + k.Quote)
+			topic := fmt.Sprintf("market.%s.depth.%s", symbol, "step0")
+			req := struct {
+				Topic string `json:"sub"`
+				ID    string `json:"id"`
+			}{topic, c.generateClientID()}
+			err := c.sock.WriteJSON(req)
+			if err != nil {
+				log.Printf("订阅消息重放失败 %s %s\n", topic, err.Error())
+			}
+		}
+
+		//
+		for k := range c.latetrade {
+			symbol := strings.ToLower(k.Base + k.Quote)
+			topic := fmt.Sprintf("market.%s.trade.detail", symbol)
+			req := struct {
+				Topic string `json:"sub"`
+				ID    string `json:"id"`
+			}{topic, c.generateClientID()}
+			err := c.sock.WriteJSON(req)
+			if err != nil {
+				log.Printf("订阅消息重放失败 %s %s\n", topic, err.Error())
+			}
+		}
+	}
+	c.replay = true
+	// 循环读取消息
 	go func() {
 		for {
-			msg, err := c.readWSMessage(conn)
+			msg, err := c.readWSMessage(c.sock)
 			if err != nil {
-				log.Printf("SubTicker websocket 连接断开 %s\n", err.Error())
+				log.Printf("huobipro < %s > 断开连接，五秒后重连...\n", err.Error())
 				go func() {
-					for {
-						time.Sleep(5 * time.Second)
-						ch, err = c.SubTicker(sreq)
-						if err == nil {
-							log.Println("重新连接成功...")
-							return
-						}
-					}
+					time.Sleep(5 * time.Second)
+					c.wsConnect()
 				}()
 				return
 			}
 			if msg == nil {
 				continue
 			}
-			// 解析数据
-			t := struct {
-				Ticker struct {
-					Amount float64 `json:"amount"`
-					Open   float64 `json:"open"`
-					Close  float64 `json:"close"`
-					High   float64 `json:"high"`
-					Low    float64 `json:"low"`
-					Vol    float64 `json:"vol"`
-				} `json:"tick"`
-			}{}
-			err = json.Unmarshal(msg, &t)
-			if err != nil {
-				continue
-			}
 
-			v := t.Ticker.Close - t.Ticker.Open
-			ret := global.Ticker{
-				Base:               sreq.Base,
-				Quote:              sreq.Quote,
-				PriceChange:        v,
-				PriceChangePercent: v / t.Ticker.Open * 100,
-				LastPrice:          t.Ticker.Close,
-				HighPrice:          t.Ticker.High,
-				LowPrice:           t.Ticker.Low,
-				Volume:             t.Ticker.Vol,
-			}
-			ch <- ret
+			// 业务逻辑处理
+			c.parse(msg)
+
 		}
+
 	}()
-
-	return ch, nil
-}
-
-func (c *WSSClient) wsConnect() (*websocket.Conn, error) {
-	u := url.URL{Scheme: "wss", Host: *c.config.WSSHost, Path: "/ws"}
-	log.Printf("huobi 连接 %s 中...\n", u.String())
-	conn, _, err := c.config.WSSDialer.Dial(u.String(), nil)
-	return conn, err
+	return err
 }
 
 func (c *WSSClient) readWSMessage(conn *websocket.Conn) ([]byte, error) {
