@@ -10,8 +10,9 @@ import (
 func defaultConfig() *config.Config {
 	cfg := &config.Config{}
 
-	cfg.WithRESTHost("data.gateio.io")
-
+	cfg.WithRESTHost("api.weex.com/v1")
+	cfg.WithSecret("")
+	cfg.WithAPIKey("")
 	transport := clean.DefaultPooledTransport()
 	// u, _ := url.Parse("http://127.0.0.1:8118")
 	// transport.Proxy = http.ProxyURL(u)
