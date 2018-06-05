@@ -82,53 +82,54 @@ func (as *apiService) InsertOrder(or global.InsertReq) (global.InsertRsp, error)
 	// }, nil
 }
 
-func (as *apiService) OrderStatus(qor global.StatusReq) (global.StatusRsp, error) {
-	params := make(map[string]string)
-	params["symbol"] = strings.ToUpper(qor.Base + qor.Quote)
-	params["timestamp"] = strconv.FormatInt(time.Now().Unix()*1000, 10)
-	if qor.OrderNo != "" {
-		params["orderId"] = qor.OrderNo
-	}
-	// if qor.OrigClientOrderID != "" {
-	// 	params["origClientOrderId"] = qor.OrigClientOrderID
-	// }
-	params["recvWindow"] = strconv.FormatInt(recvWindow(time.Second*5), 10)
-	rawOrder := &rawExecutedOrder{}
-	err := as.request("GET", "api/v3/order", params, rawOrder, true, true)
-	if err != nil {
-		return global.StatusRsp{}, err
-	}
+// func (as *apiService) OrderStatus(qor global.StatusReq) (global.StatusRsp, error) {
+// 	params := make(map[string]string)
+// 	params["symbol"] = strings.ToUpper(qor.Base + qor.Quote)
+// 	params["timestamp"] = strconv.FormatInt(time.Now().Unix()*1000, 10)
+// 	if qor.OrderNo != "" {
+// 		params["orderId"] = qor.OrderNo
+// 	}
+// 	// if qor.OrigClientOrderID != "" {
+// 	// 	params["origClientOrderId"] = qor.OrigClientOrderID
+// 	// }
+// 	params["recvWindow"] = strconv.FormatInt(recvWindow(time.Second*5), 10)
+// 	rawOrder := &rawExecutedOrder{}
+// 	err := as.request("GET", "api/v3/order", params, rawOrder, true, true)
+// 	if err != nil {
+// 		return global.StatusRsp{}, err
+// 	}
 
-	or, err := executedOrderFromRaw(rawOrder)
-	if err != nil {
-		return global.StatusRsp{}, err
-	}
-	m := global.StatusRsp{}
-	m.TradePrice = or.ExecutePrice
-	m.TradeNum = or.ExecutedQty
-	if or.ExecutedQty != 0. || or.Status == StatusPartiallyFilled {
-		m.Status = global.HALFTRADE
-		m.StatusMsg = "部分成交"
-	}
-	if or.ExecutedQty == or.OrigQty || or.Status == StatusFilled {
-		m.Status = global.COMPLETETRADE
-		m.StatusMsg = "完全成交"
-	}
-	if or.Status == StatusCancelled {
-		m.Status = global.CANCELED
-		m.StatusMsg = "已撤单"
-	}
-	if or.Status == StatusRejected {
-		m.Status = global.FAILED
-		m.StatusMsg = "订单被拒绝"
-	}
-	if or.Status == StatusExpired {
-		m.Status = global.FAILED
-		m.StatusMsg = "订单超时"
-	}
-	fmt.Printf("binance order status %+v\n", or)
-	return m, nil
-}
+// 	or, err := executedOrderFromRaw(rawOrder)
+// 	if err != nil {
+// 		return global.StatusRsp{}, err
+// 	}
+// 	m := global.StatusRsp{}
+// 	m.TradePrice = or.ExecutePrice
+// 	m.TradeNum = or.ExecutedQty
+
+// 	if or.ExecutedQty != 0. || or.Status == StatusPartiallyFilled {
+// 		m.Status = global.HALFTRADE
+// 		m.StatusMsg = "部分成交"
+// 	}
+// 	if or.ExecutedQty == or.OrigQty || or.Status == StatusFilled {
+// 		m.Status = global.COMPLETETRADE
+// 		m.StatusMsg = "完全成交"
+// 	}
+// 	if or.Status == StatusCancelled {
+// 		m.Status = global.CANCELED
+// 		m.StatusMsg = "已撤单"
+// 	}
+// 	if or.Status == StatusRejected {
+// 		m.Status = global.FAILED
+// 		m.StatusMsg = "订单被拒绝"
+// 	}
+// 	if or.Status == StatusExpired {
+// 		m.Status = global.FAILED
+// 		m.StatusMsg = "订单超时"
+// 	}
+// 	fmt.Printf("binance order status %+v\n", or)
+// 	return m, nil
+// }
 
 func (as *apiService) CancelOrder(cor global.CancelReq) error {
 	params := make(map[string]string)
@@ -188,33 +189,61 @@ func (as *apiService) OpenOrders(oor OpenOrdersRequest) ([]*ExecutedOrder, error
 	return eoc, nil
 }
 
-func (as *apiService) AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error) {
+func (as *apiService) OrderStatus(qor global.StatusReq) (global.StatusRsp, error) {
 	params := make(map[string]string)
-	params["symbol"] = aor.Symbol
+	params["symbol"] = strings.ToUpper(qor.Base + qor.Quote)
 	params["timestamp"] = strconv.FormatInt(unixMillis(time.Now()), 10)
-	params["orderId"] = strconv.FormatInt(aor.OrderID, 10)
-	if aor.Limit != 0 {
-		params["limit"] = strconv.Itoa(aor.Limit)
-	}
-	if aor.RecvWindow != 0 {
-		params["recvWindow"] = strconv.FormatInt(5, 10)
-	}
+	params["orderId"] = qor.OrderNo
+	params["recvWindow"] = strconv.FormatInt(recvWindow(time.Second*5), 10)
+
+	// if aor.Limit != 0 {
+	// 	params["limit"] = strconv.Itoa(aor.Limit)
+	// }
+
 	rawOrders := []rawExecutedOrder{}
 	err := as.request("GET", "api/v3/allOrders", params, &rawOrders, true, true)
 	if err != nil {
-		return nil, err
+		return global.StatusRsp{}, err
 	}
 
 	var eoc []*ExecutedOrder
 	for _, rawOrder := range rawOrders {
 		eo, err := executedOrderFromRaw(&rawOrder)
 		if err != nil {
-			return nil, err
+			return global.StatusRsp{}, err
 		}
 		eoc = append(eoc, eo)
 	}
+	if len(eoc) != 1 {
+		return global.StatusRsp{}, fmt.Errorf("rsp len error: %d", len(eoc))
+	}
+	or := eoc[0]
+	m := global.StatusRsp{}
+	m.TradePrice = or.ExecutePrice
+	m.TradeNum = or.ExecutedQty
 
-	return eoc, nil
+	if or.ExecutedQty != 0. || or.Status == StatusPartiallyFilled {
+		m.Status = global.HALFTRADE
+		m.StatusMsg = "部分成交"
+	}
+	if or.ExecutedQty == or.OrigQty || or.Status == StatusFilled {
+		m.Status = global.COMPLETETRADE
+		m.StatusMsg = "完全成交"
+	}
+	if or.Status == StatusCancelled {
+		m.Status = global.CANCELED
+		m.StatusMsg = "已撤单"
+	}
+	if or.Status == StatusRejected {
+		m.Status = global.FAILED
+		m.StatusMsg = "订单被拒绝"
+	}
+	if or.Status == StatusExpired {
+		m.Status = global.FAILED
+		m.StatusMsg = "订单超时"
+	}
+	fmt.Printf("binance order status %+v\n", or)
+	return m, nil
 }
 
 func (as *apiService) GetFund(global.FundReq) ([]global.Fund, error) {

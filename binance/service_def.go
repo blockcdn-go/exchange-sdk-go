@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/blockcdn-go/exchange-sdk-go/global"
@@ -18,10 +19,6 @@ import (
 // The main purpose for this layer is to be replaced with dummy implementation
 // if necessary without need to replace Binance instance.
 type Service interface {
-	// Ping tests connectivity.
-	Ping() error
-	// Time returns server time.
-	Time() (time.Time, error)
 	// GetAllSymbol 所有的可交易对
 	GetAllSymbol() ([]global.TradeSymbol, error)
 	// OrderBook returns list of orders.
@@ -46,7 +43,7 @@ type Service interface {
 	// OpenOrders returns list of open orders.
 	OpenOrders(oor OpenOrdersRequest) ([]*ExecutedOrder, error)
 	// AllOrders returns list of all previous orders.
-	AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error)
+	//AllOrders(aor AllOrdersRequest) ([]*ExecutedOrder, error)
 
 	// GetFund returns account data.
 	GetFund(global.FundReq) ([]global.Fund, error)
@@ -123,7 +120,6 @@ func (as *apiService) request(method string, path string, params map[string]stri
 	client := &http.Client{
 		Transport: transport,
 	}
-
 	url := fmt.Sprintf("%s/%s", as.URL, path)
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
@@ -155,7 +151,11 @@ func (as *apiService) request(method string, path string, params map[string]stri
 	if err != nil {
 		return warpError(err, "unable to read response from allOrders.get")
 	}
-	fmt.Println("binance http msg:", string(textRes))
+	if !strings.Contains(path, "api/v1/exchangeInfo") &&
+		!strings.Contains(path, "api/v1/klines") {
+		fmt.Println("binance http msg:", string(textRes))
+	}
+
 	if resp.StatusCode != 200 {
 		return as.handleError(textRes)
 	}

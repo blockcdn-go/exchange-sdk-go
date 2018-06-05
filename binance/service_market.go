@@ -8,32 +8,6 @@ import (
 	"github.com/blockcdn-go/exchange-sdk-go/global"
 )
 
-func (as *apiService) Ping() error {
-	params := make(map[string]string)
-	err := as.request("GET", "api/v1/ping", params, nil, false, false)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (as *apiService) Time() (time.Time, error) {
-	params := make(map[string]string)
-	var rawTime struct {
-		ServerTime float64 `json:"serverTime"`
-	}
-	err := as.request("GET", "api/v1/time", params, &rawTime, false, false)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	t, err := timeFromUnixTimestampFloat(rawTime.ServerTime)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return t, nil
-}
-
 func (as *apiService) GetAllSymbol() ([]global.TradeSymbol, error) {
 	r := &struct {
 		Symbols []TradePair `json:"symbols"`
