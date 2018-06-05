@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -140,9 +139,9 @@ func (as *apiService) request(method string, path string, params map[string]stri
 		req.Header.Add("X-MBX-APIKEY", as.APIKey)
 	}
 	if sign {
-		log.Println("queryString", q.Encode())
+		//log.Println("queryString", q.Encode())
 		q.Add("signature", as.Signer.Sign([]byte(q.Encode())))
-		log.Println("signature", as.Signer.Sign([]byte(q.Encode())))
+		//log.Println("signature", as.Signer.Sign([]byte(q.Encode())))
 	}
 	req.URL.RawQuery = q.Encode()
 
@@ -156,7 +155,7 @@ func (as *apiService) request(method string, path string, params map[string]stri
 	if err != nil {
 		return warpError(err, "unable to read response from allOrders.get")
 	}
-	//fmt.Println("binance http msg:", string(textRes))
+	fmt.Println("binance http msg:", string(textRes))
 	if resp.StatusCode != 200 {
 		return as.handleError(textRes)
 	}
