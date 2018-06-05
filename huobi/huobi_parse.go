@@ -2,7 +2,6 @@ package huobi
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -33,7 +32,7 @@ func (c *WSSClient) parse(msg []byte) {
 			Bids [][]float64 `json:"bids"` //买方深度
 		} `json:"tick"`
 	}{}
-	fmt.Println("huobipro: ", string(msg))
+	//fmt.Println("huobipro: ", string(msg))
 	err := json.Unmarshal(msg, &t)
 	if err != nil {
 		log.Printf("json unmarshal %s\n", err.Error())

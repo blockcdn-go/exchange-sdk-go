@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/blockcdn-go/exchange-sdk-go/global"
 	//	"net/http"
 	//	"net/url"
 	"os"
@@ -70,39 +72,32 @@ func main() {
 
 	cfg.WithWSSDialer(dialer)
 	wss := huobi.NewWSSClient(cfg)
-	symbol := "btcusdt"
 
-	kl, err := wss.ReqMarketKline(symbol, "5min")
-	fmt.Println(kl, err)
-	msgCh, err := wss.SubMarketKLine(symbol, huobi.Period1Min)
+	pair := global.TradeSymbol{Base: "btc", Quote: "usdt"}
+
+	msgCh, err := wss.SubTicker(pair)
 	if err != nil {
 		log.Fatal("query error: ", err)
 	}
-	msgCh1, e1 := wss.SubMarketDepth(symbol, "step5")
+	msgCh1, e1 := wss.SubDepth(pair)
 	if e1 != nil {
 		log.Fatal("query error: ", e1)
 	}
-	msgCh2, e2 := wss.SubTradeDetail(symbol)
+	msgCh2, e2 := wss.SubLateTrade(pair)
 	if e2 != nil {
 		log.Fatal("query error: ", e2)
 	}
-	msgCh3, e3 := wss.SubMarketDetail(symbol)
-	if e3 != nil {
-		log.Fatal("query error: ", e3)
-	}
+
 	for {
 		select {
 		case <-interrupt:
-			wss.Close()
 			return
 		case m := <-msgCh:
-			fmt.Println("SubMarketKLine: ", string(m))
+			fmt.Printf("Ticker: %+v\n", m)
 		case m1 := <-msgCh1:
-			fmt.Println("SubMarketDepth: ", string(m1))
+			fmt.Printf("Depth: %+v\n", m1)
 		case m2 := <-msgCh2:
-			fmt.Println("SubTradeDetail: ", string(m2))
-		case m3 := <-msgCh3:
-			fmt.Println("SubMarketDetail: ", string(m3))
+			fmt.Printf("LateTrade: %+v\n", m2)
 		}
 	}
 
