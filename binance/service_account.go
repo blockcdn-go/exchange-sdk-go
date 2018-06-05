@@ -6,23 +6,26 @@ import (
 	"strings"
 	"time"
 
+	"gitlab.mybcdn.com/golang/blockcoin/apidb"
+
 	"github.com/blockcdn-go/exchange-sdk-go/global"
 )
 
 type rawExecutedOrder struct {
-	Symbol        string  `json:"symbol"`
-	OrderID       int     `json:"orderId"`
-	ClientOrderID string  `json:"clientOrderId"`
-	Price         string  `json:"price"`
-	OrigQty       string  `json:"origQty"`
-	ExecutedQty   string  `json:"executedQty"`
-	Status        string  `json:"status"`
-	TimeInForce   string  `json:"timeInForce"`
-	Type          string  `json:"type"`
-	Side          string  `json:"side"`
-	StopPrice     string  `json:"stopPrice"`
-	IcebergQty    string  `json:"icebergQty"`
-	Time          float64 `json:"time"`
+	Symbol           string  `json:"symbol"`
+	OrderID          int     `json:"orderId"`
+	ClientOrderID    string  `json:"clientOrderId"`
+	Price            string  `json:"price"`
+	OrigQty          string  `json:"origQty"`
+	ExecutedQuoteQty string  `json:"executedQuoteQty"`
+	ExecutedQty      string  `json:"executedQty"`
+	Status           string  `json:"status"`
+	TimeInForce      string  `json:"timeInForce"`
+	Type             string  `json:"type"`
+	Side             string  `json:"side"`
+	StopPrice        string  `json:"stopPrice"`
+	IcebergQty       string  `json:"icebergQty"`
+	Time             float64 `json:"time"`
 }
 
 func (as *apiService) InsertOrder(or global.InsertReq) (global.InsertRsp, error) {
@@ -36,9 +39,12 @@ func (as *apiService) InsertOrder(or global.InsertReq) (global.InsertRsp, error)
 	if or.Type == 1 {
 		params["type"] = string(TypeMarket)
 	}
-	params["timeInForce"] = string(GTC)
+	if or.Type == int(apidb.LIMIT) {
+		// 限价才有的参数
+		params["timeInForce"] = string(GTC)
+		params["price"] = strconv.FormatFloat(or.Price, 'f', -1, 64)
+	}
 	params["quantity"] = strconv.FormatFloat(or.Num, 'f', -1, 64)
-	params["price"] = strconv.FormatFloat(or.Price, 'f', -1, 64)
 	params["timestamp"] = strconv.FormatInt(time.Now().Unix()*1000, 10)
 	// if or.NewClientOrderID != "" {
 	// 	params["newClientOrderId"] = or.NewClientOrderID
@@ -86,9 +92,7 @@ func (as *apiService) OrderStatus(qor global.StatusReq) (global.StatusRsp, error
 	// if qor.OrigClientOrderID != "" {
 	// 	params["origClientOrderId"] = qor.OrigClientOrderID
 	// }
-	// if qor.RecvWindow != 0 {
-	// 	params["recvWindow"] = strconv.FormatInt(recvWindow(qor.RecvWindow), 10)
-	// }
+	params["recvWindow"] = strconv.FormatInt(recvWindow(time.Second*5), 10)
 	rawOrder := &rawExecutedOrder{}
 	err := as.request("GET", "api/v3/order", params, rawOrder, true, true)
 	if err != nil {
@@ -100,7 +104,7 @@ func (as *apiService) OrderStatus(qor global.StatusReq) (global.StatusRsp, error
 		return global.StatusRsp{}, err
 	}
 	m := global.StatusRsp{}
-	m.TradePrice = or.Price
+	m.TradePrice = or.ExecutePrice
 	m.TradeNum = or.ExecutedQty
 	if or.ExecutedQty != 0. || or.Status == StatusPartiallyFilled {
 		m.Status = global.HALFTRADE
@@ -139,9 +143,8 @@ func (as *apiService) CancelOrder(cor global.CancelReq) error {
 	// if cor.NewClientOrderID != "" {
 	// 	params["newClientOrderId"] = cor.NewClientOrderID
 	// }
-	// if cor.RecvWindow != 0 {
-	// 	params["recvWindow"] = strconv.FormatInt(recvWindow(cor.RecvWindow), 10)
-	// }
+	params["recvWindow"] = strconv.FormatInt(recvWindow(time.Second*5), 10)
+
 	rawCanceledOrder := struct {
 		Symbol            string `json:"symbol"`
 		OrigClientOrderID string `json:"origClientOrderId"`
@@ -472,6 +475,7 @@ func executedOrderFromRaw(reo *rawExecutedOrder) (*ExecutedOrder, error) {
 	if err != nil {
 		return nil, warpError(err, "cannot parse Order.OrigQty")
 	}
+	exePrice, _ := strconv.ParseFloat(reo.ExecutedQuoteQty, 64)
 	execQty, err := strconv.ParseFloat(reo.ExecutedQty, 64)
 	if err != nil {
 		return nil, warpError(err, "cannot parse Order.ExecutedQty")
@@ -495,6 +499,7 @@ func executedOrderFromRaw(reo *rawExecutedOrder) (*ExecutedOrder, error) {
 		ClientOrderID: reo.ClientOrderID,
 		Price:         price,
 		OrigQty:       origQty,
+		ExecutePrice:  exePrice,
 		ExecutedQty:   execQty,
 		Status:        OrderStatus(reo.Status),
 		TimeInForce:   TimeInForce(reo.TimeInForce),

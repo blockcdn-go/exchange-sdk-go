@@ -184,6 +184,7 @@ type ExecutedOrder struct {
 	ClientOrderID string
 	Price         float64
 	OrigQty       float64
+	ExecutePrice  float64
 	ExecutedQty   float64
 	Status        OrderStatus
 	TimeInForce   TimeInForce
