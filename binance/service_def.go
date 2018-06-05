@@ -67,10 +67,10 @@ type Service interface {
 	// CloseUserDataStream closes opened stream.
 	CloseUserDataStream(listenKey string) error
 
-	DepthWebsocket(symbol string) (chan *DepthEvent, error)
+	SubLateTrade(global.TradeSymbol) (chan global.LateTrade, error)
+	SubTicker(global.TradeSymbol) (chan global.Ticker, error)
+	SubDepth(global.TradeSymbol) (chan global.Depth, error)
 	KlineWebsocket(symbol string, intr Interval) (chan *KlineEvent, error)
-	TradeWebsocket(symbol string) (chan *AggTradeEvent, error)
-	TickerWebsocket(symbol string) (chan *Ticker24, error)
 	Ticker24Websocket() (chan *Ticker24, error)
 	UserDataWebsocket(listenKey string) (chan *AccountEvent, error)
 }

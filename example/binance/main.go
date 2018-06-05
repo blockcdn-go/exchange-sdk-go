@@ -6,7 +6,10 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"os/signal"
 	"time"
+
+	"github.com/blockcdn-go/exchange-sdk-go/global"
 
 	"github.com/blockcdn-go/exchange-sdk-go/binance"
 )
@@ -33,32 +36,31 @@ func main() {
 		cjs.Binance.APISec,
 		pxy)
 
-	// interrupt := make(chan os.Signal, 1)
-	// signal.Notify(interrupt, os.Interrupt)
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	ts := global.TradeSymbol{Base: "btc", Quote: "usdt"}
+	kech, err := b.SubLateTrade(ts)
+	fmt.Printf("%+v, %+v\n", kech, err)
+	depth, err := b.SubDepth(ts)
+	fmt.Printf("%+v, %+v\n", depth, err)
+	tk, err := b.SubTicker(ts)
+	fmt.Printf("%+v, %+v\n", tk, err)
+	go func() {
+		for {
+			select {
+			case ke := <-kech:
+				fmt.Printf("SubLateTrade %+v\n", ke)
+			case d := <-depth:
+				fmt.Printf("SubDepth %+v\n", d)
+			case t := <-tk:
+				fmt.Printf("SubTicker %+v\n", t)
+			}
+		}
+	}()
 
-	// kech, err := b.TradeWebsocket("BTCUSDT")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// depth, _ := b.DepthWebsocket("BTCUSDT")
-
-	// tk, _ := b.TickerWebsocket("BTCUSDT")
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case ke := <-kech:
-	// 			fmt.Printf("%+v\n", ke)
-	// 		case d := <-depth:
-	// 			fmt.Printf("%+v\n", d)
-	// 		case t := <-tk:
-	// 			fmt.Printf("%+v\n", t)
-	// 		}
-	// 	}
-	// }()
-
-	// fmt.Println("waiting for interrupt")
-	// <-interrupt
-	// fmt.Println("canceling context")
+	fmt.Println("waiting for interrupt")
+	<-interrupt
+	fmt.Println("canceling context")
 
 	// fmt.Println("exit")
 	// return
@@ -73,11 +75,16 @@ func main() {
 	// fmt.Printf("%#v\n", kl)
 
 	// pass
-	res6, err := b.Account()
+	res6, err := b.GetFund(global.FundReq{})
 	fmt.Println("Account:", res6, err)
 
 	// pass
-	k1, ke1 := b.Klines(binance.KlinesRequest{Symbol: "BTCUSDT", Interval: binance.Minute, Limit: 10})
+	k1, ke1 := b.GetKline(global.KlineReq{
+		Base:   ts.Base,
+		Quote:  ts.Quote,
+		Period: "1m",
+		Count:  500,
+	})
 	fmt.Println("Klines:", k1, ke1)
 
 	r0, e0 := b.Time()
@@ -88,33 +95,18 @@ func main() {
 	})
 	fmt.Println("allorders:", r1, e1)
 
-	newo := binance.NewOrderRequest{
-		Symbol:      "FUNETH",
-		Quantity:    200,
-		Price:       0.00006179,
-		Side:        binance.SideBuy,
-		TimeInForce: binance.GTC,
-		Type:        binance.TypeLimit,
-		Timestamp:   time.Now(),
-	}
-	//	err := b.NewOrderTest(newo)
-	//	fmt.Println("NewOrderTest:", err)
-
-	newOrder, err := b.NewOrder(newo)
+	newOrder, err := b.InsertOrder(global.InsertReq{
+		Base:  ts.Base,
+		Quote: ts.Quote,
+	})
 
 	fmt.Println("NewOrder:", newOrder, err)
 	if err != nil {
 		panic("...")
 	}
-	orderid := int64(12222764)
 
 	// pass
-	res2, err := b.QueryOrder(binance.QueryOrderRequest{
-		Symbol:  "FUNETH",
-		OrderID: orderid,
-		//RecvWindow: 5 * time.Second,
-		Timestamp: time.Now(),
-	})
+	res2, err := b.OrderStatus(global.StatusReq{})
 	fmt.Println("QueryOrder:", res2, err)
 
 	// pass
@@ -126,12 +118,8 @@ func main() {
 	fmt.Println("OpenOrders:", res4, err)
 
 	// pass
-	res3, err := b.CancelOrder(binance.CancelOrderRequest{
-		Symbol:    "FUNETH",
-		OrderID:   orderid,
-		Timestamp: time.Now(),
-	})
-	fmt.Println("cancel order:", res3, err)
+	err = b.CancelOrder(global.CancelReq{})
+	fmt.Println("cancel order:", err)
 
 	res7, err := b.MyTrades(binance.MyTradesRequest{
 		Symbol:     "BNBETH",
