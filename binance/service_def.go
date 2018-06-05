@@ -152,7 +152,8 @@ func (as *apiService) request(method string, path string, params map[string]stri
 		return warpError(err, "unable to read response from allOrders.get")
 	}
 	if !strings.Contains(path, "api/v1/exchangeInfo") &&
-		!strings.Contains(path, "api/v1/klines") {
+		!strings.Contains(path, "api/v1/klines") &&
+		!strings.Contains(path, "api/v3/account") {
 		fmt.Println("binance http msg:", string(textRes))
 	}
 

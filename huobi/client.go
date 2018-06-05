@@ -126,8 +126,13 @@ func (c *Client) doHTTP(method, path string, mapParams map[string]string, out in
 	if err != nil {
 		return err
 	}
+	if !strings.Contains(path, "/v1/common/symbols") &&
+		!strings.Contains(path, "/market/history/kline") &&
+		!strings.Contains(path, "/v1/account/accounts") &&
+		!strings.Contains(path, "/v1/order/orders") {
+		fmt.Printf("huobi http message:%s\n", string(body))
+	}
 
-	//fmt.Printf("huobi http message:%s\n", string(body))
 	extra.RegisterFuzzyDecoders()
 
 	err = jsoniter.Unmarshal(body, out)

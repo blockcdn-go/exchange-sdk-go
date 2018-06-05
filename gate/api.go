@@ -474,8 +474,10 @@ func (c *Client) httpReq(method, path string, in interface{}, out interface{}) e
 	if err != nil {
 		return err
 	}
+	if strings.Contains(path, "/api2/1/private/") && !strings.Contains(path, "getOrder") {
+		fmt.Printf("http message: %s\n", string(body))
+	}
 
-	//fmt.Printf("http message: %s\n", string(body))
 	extra.RegisterFuzzyDecoders()
 
 	err = jsoniter.Unmarshal(body, out)
