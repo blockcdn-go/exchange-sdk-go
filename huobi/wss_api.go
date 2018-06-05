@@ -42,7 +42,9 @@ func (c *WSSClient) GetKline(req global.KlineReq) ([]global.Kline, error) {
 		To    int64  `json:"to,omitempty"`
 	}{Topic: topic, ID: c.generateClientID()}
 
+	c.mutex.Lock()
 	err = conn.WriteJSON(kreq)
+	c.mutex.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -101,15 +103,15 @@ func (c *WSSClient) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error)
 		ID    string `json:"id"`
 	}{topic, c.generateClientID()}
 
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	err := c.sock.WriteJSON(req)
 	if err != nil {
 		return nil, err
 	}
 
 	ch := make(chan global.Depth, 100)
-	c.mutex.Lock()
 	c.depth[sreq] = ch
-	c.mutex.Unlock()
 
 	// 直接返回
 	return ch, nil
@@ -129,14 +131,14 @@ func (c *WSSClient) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade
 		ID    string `json:"id"`
 	}{topic, c.generateClientID()}
 
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	err := c.sock.WriteJSON(req)
 	if err != nil {
 		return nil, err
 	}
 	ch := make(chan global.LateTrade, 100)
-	c.mutex.Lock()
 	c.latetrade[sreq] = ch
-	c.mutex.Unlock()
 
 	return ch, nil
 }
@@ -154,14 +156,15 @@ func (c *WSSClient) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, erro
 		ID    string `json:"id"`
 	}{topic, c.generateClientID()}
 
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	err := c.sock.WriteJSON(req)
 	if err != nil {
 		return nil, err
 	}
 	ch := make(chan global.Ticker, 100)
-	c.mutex.Lock()
 	c.tick[sreq] = ch
-	c.mutex.Unlock()
 
 	return ch, nil
 }
@@ -192,7 +195,9 @@ func (c *WSSClient) wsConnect() error {
 				Topic string `json:"sub"`
 				ID    string `json:"id"`
 			}{topic, c.generateClientID()}
+			c.mutex.Lock()
 			err := c.sock.WriteJSON(req)
+			c.mutex.Unlock()
 			if err != nil {
 				log.Printf("订阅消息重放失败 %s %s\n", topic, err.Error())
 			}
@@ -206,7 +211,9 @@ func (c *WSSClient) wsConnect() error {
 				Topic string `json:"sub"`
 				ID    string `json:"id"`
 			}{topic, c.generateClientID()}
+			c.mutex.Lock()
 			err := c.sock.WriteJSON(req)
+			c.mutex.Unlock()
 			if err != nil {
 				log.Printf("订阅消息重放失败 %s %s\n", topic, err.Error())
 			}
@@ -220,7 +227,9 @@ func (c *WSSClient) wsConnect() error {
 				Topic string `json:"sub"`
 				ID    string `json:"id"`
 			}{topic, c.generateClientID()}
+			c.mutex.Lock()
 			err := c.sock.WriteJSON(req)
+			c.mutex.Unlock()
 			if err != nil {
 				log.Printf("订阅消息重放失败 %s %s\n", topic, err.Error())
 			}
