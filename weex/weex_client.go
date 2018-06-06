@@ -6,15 +6,25 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
+	"github.com/blockcdn-go/exchange-sdk-go/global"
+	"github.com/gorilla/websocket"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
 )
 
 // Client 提供weex API的调用客户端
 type Client struct {
-	config config.Config
+	config    config.Config
+	sock      *websocket.Conn
+	once      sync.Once
+	mutex     sync.Mutex
+	replay    bool
+	tick      map[global.TradeSymbol]chan global.Ticker
+	depth     map[global.TradeSymbol]chan global.Depth
+	latetrade map[global.TradeSymbol]chan global.LateTrade
 }
 
 // NewClient 创建一个新的client
@@ -24,7 +34,12 @@ func NewClient(config *config.Config) *Client {
 		cfg.MergeIn(config)
 	}
 
-	return &Client{config: *cfg}
+	return &Client{
+		config:    *cfg,
+		tick:      make(map[global.TradeSymbol]chan global.Ticker),
+		depth:     make(map[global.TradeSymbol]chan global.Depth),
+		latetrade: make(map[global.TradeSymbol]chan global.LateTrade),
+	}
 }
 
 func (c *Client) httpReq(method, path string, in map[string]interface{}, out interface{}, bs bool) error {

@@ -19,4 +19,18 @@ func main() {
 		Period: "1m",
 	})
 	fmt.Printf("%+v, %+v\n", err, k)
+
+	tch, err := c.SubTicker(s[0])
+	lch, err := c.SubLateTrade(s[0])
+
+	for {
+		select {
+		case tk := <-tch:
+			fmt.Printf("notify %+v\n", tk)
+			break
+		case lt := <-lch:
+			fmt.Printf("notify %+v\n", lt)
+			break
+		}
+	}
 }
