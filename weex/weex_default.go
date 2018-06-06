@@ -10,7 +10,7 @@ import (
 func defaultConfig() *config.Config {
 	cfg := &config.Config{}
 
-	cfg.WithRESTHost("api.weex.com/v1")
+	cfg.WithRESTHost("api.weex.com")
 	cfg.WithSecret("")
 	cfg.WithAPIKey("")
 	transport := clean.DefaultPooledTransport()

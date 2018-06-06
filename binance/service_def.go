@@ -22,7 +22,7 @@ type Service interface {
 	// GetAllSymbol 所有的可交易对
 	GetAllSymbol() ([]global.TradeSymbol, error)
 	// OrderBook returns list of orders.
-	OrderBook(obr OrderBookRequest) (*OrderBook, error)
+	// OrderBook(obr OrderBookRequest) (*OrderBook, error)
 	// AggTrades returns compressed/aggregate list of trades.
 	AggTrades(atr AggTradesRequest) ([]*AggTrade, error)
 	// GetKline returns klines/candlestick data.

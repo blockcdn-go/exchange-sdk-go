@@ -62,6 +62,8 @@ func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
 		period = period + "in"
 	} else if period == "1h" {
 		period = "60m"
+	} else if strings.Contains(period, "h") {
+		period = period + "our"
 	} else if strings.Contains(period, "d") {
 		period = period + "ay"
 	} else if strings.Contains(period, "w") {

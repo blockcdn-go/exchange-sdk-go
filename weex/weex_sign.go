@@ -3,6 +3,7 @@ package weex
 import (
 	"crypto/hmac"
 	"crypto/md5"
+	"log"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -15,6 +16,9 @@ type sortPair struct {
 }
 
 func sortMap(from map[string]interface{}) []sortPair {
+	if from == nil {
+		return []sortPair{}
+	}
 	cp := make([]sortPair, 0, len(from))
 	for k, v := range from {
 		cp = append(cp, sortPair{Key: k, Value: v})
@@ -55,16 +59,28 @@ func quickSort(src []sortPair, begin, end int) {
 	quickSort(src, i+1, end)
 }
 
-func sign(apikey, apisec string, i map[string]interface{}) (string, string) {
-	afterSort := sortMap(i)
+func urlEncode(in map[string]interface{}) string {
+	if in == nil || len(in) == 0 {
+		return ""
+	}
+	s := sortMap(in)
+	return sliceEncode(s)
+}
 
+func sliceEncode(s []sortPair) string {
 	var str string
-	for i := 0; i < len(afterSort); i++ {
-		str += afterSort[i].Key + "=" + url.QueryEscape(toString(afterSort[i].Value))
-		if i != len(afterSort)-1 {
+	for i := 0; i < len(s); i++ {
+		str += s[i].Key + "=" + url.QueryEscape(toString(s[i].Value))
+		if i != len(s)-1 {
 			str += "&"
 		}
 	}
+	return str
+}
+
+func sign(apikey, apisec string, in map[string]interface{}) (string, string) {
+	afterSort := sortMap(in)
+	str := sliceEncode(afterSort)
 	h := hmac.New(md5.New, []byte(apikey))
 	h.Write([]byte(str))
 	s := string(h.Sum(nil))
@@ -96,4 +112,40 @@ func toString(i interface{}) string {
 		return strconv.FormatFloat(v.Float(), 'f', -1, 64)
 	}
 	return ""
+}
+
+func toFloat(i interface{}) float64 {
+	v := reflect.ValueOf(i)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	var f float64
+	switch v.Kind() {
+	case reflect.String:
+		f, _ = strconv.ParseFloat(v.String(), 64)
+		break
+	case reflect.Int:
+	case reflect.Int8:
+	case reflect.Int16:
+	case reflect.Int32:
+	case reflect.Int64:
+		f = float64(v.Int())
+		break
+	case reflect.Uint:
+	case reflect.Uint8:
+	case reflect.Uint16:
+	case reflect.Uint32:
+	case reflect.Uint64:
+		f = float64(v.Uint())
+		break
+	case reflect.Float32:
+	case reflect.Float64:
+		f = v.Float()
+		break
+	default:
+		log.Printf("toFloat type error %v\n", v.Kind())
+		break
+	}
+
+	return f
 }
