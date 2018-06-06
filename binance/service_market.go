@@ -29,7 +29,7 @@ func (as *apiService) GetAllSymbol() ([]global.TradeSymbol, error) {
 
 func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
 	params := make(map[string]string)
-	params["symbol"] = strings.ToLower(sreq.Base + sreq.Quote)
+	params["symbol"] = strings.ToUpper(sreq.Base + sreq.Quote)
 	params["limit"] = "100"
 
 	ch := make(chan global.Depth, 100)

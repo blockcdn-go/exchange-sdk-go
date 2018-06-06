@@ -87,14 +87,6 @@ func main() {
 	})
 	fmt.Println("Klines:", k1, ke1)
 
-	r0, e0 := b.Time()
-	fmt.Println("time:", r0, e0)
-	r1, e1 := b.AllOrders(binance.AllOrdersRequest{
-		Symbol:  "FUNETH",
-		OrderID: 12222764,
-	})
-	fmt.Println("allorders:", r1, e1)
-
 	newOrder, err := b.InsertOrder(global.InsertReq{
 		Base:  ts.Base,
 		Quote: ts.Quote,
