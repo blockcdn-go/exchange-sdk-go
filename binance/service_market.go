@@ -44,6 +44,7 @@ func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, erro
 			err := as.request("GET", "api/v1/depth", params, &rawBook, false, false)
 			if err != nil {
 				log.Printf("binance depth error : %+v\n", err)
+				time.Sleep(10 * time.Second)
 				continue
 			}
 			extractOrder := func(rawPrice, rawQuantity interface{}) (*Order, error) {

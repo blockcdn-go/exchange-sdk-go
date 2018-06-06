@@ -1,6 +1,7 @@
 package weex
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/blockcdn-go/exchange-sdk-go/global"
@@ -39,6 +40,9 @@ func (c *Client) GetAllSymbol() ([]global.TradeSymbol, error) {
 	if err != nil {
 		return nil, err
 	}
+	if r.Code != 0 {
+		return nil, errors.New(r.Msg)
+	}
 	ret := []global.TradeSymbol{}
 	for _, s := range d {
 		ret = append(ret, global.TradeSymbol{
@@ -71,6 +75,9 @@ func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
 	if err != nil {
 		return nil, err
 	}
+	if r.Code != 0 {
+		return nil, errors.New(r.Msg)
+	}
 	ret := []global.Kline{}
 	for _, v := range d {
 		if len(v) < 6 {
@@ -90,7 +97,27 @@ func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
 	return ret, nil
 }
 
-// SubDepth 订阅深度行情，使用rest接口查询实现
-func (c *Client) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
-	return nil, nil
+// GetFund 获取帐号资金余额
+func (c *Client) GetFund(global.FundReq) ([]global.Fund, error) {
+	d := map[string]struct {
+		Available string `json:"available"`
+		Frozen    string `json:"frozen"`
+	}{}
+	r := weexRsp{Data: &d}
+	err := c.httpReq("GET", "https://api.weex.com/v1/balance/", nil, &r, true)
+	if err != nil {
+		return nil, err
+	}
+	if r.Code != 0 {
+		return nil, errors.New(r.Msg)
+	}
+	ret := []global.Fund{}
+	for k, v := range d {
+		ret = append(ret, global.Fund{
+			Base:      k,
+			Available: toFloat(v.Available),
+			Frozen:    toFloat(v.Frozen),
+		})
+	}
+	return ret, nil
 }

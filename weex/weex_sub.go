@@ -39,6 +39,59 @@ func (c *Client) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) 
 	return ch, nil
 }
 
+// SubDepth 订阅深度行情，使用rest接口查询实现
+func (c *Client) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
+	in := make(map[string]interface{})
+	in["market"] = strings.ToLower(sreq.Base + sreq.Quote)
+	in["limit"] = 100
+	in["merge"] = "0"
+
+	ch := make(chan global.Depth, 100)
+	go func() {
+		for {
+			d := struct {
+				Asks [][]string `json:"asks"`
+				Bids [][]string `json:"bids"`
+			}{}
+			r := weexRsp{Data: &d}
+			err := c.httpReq("GET", "https://api.weex.com/v1/market/depth", in, &r, false)
+			if err != nil || r.Code != 0 {
+				log.Printf("weex get depth error: %+v, msg:%s\n", err, r.Msg)
+				time.Sleep(10 * time.Second)
+				continue
+			}
+			dr := global.Depth{
+				Base:  sreq.Base,
+				Quote: sreq.Quote,
+				Asks:  []global.DepthPair{},
+				Bids:  []global.DepthPair{},
+			}
+			for _, a := range d.Asks {
+				if len(a) < 2 {
+					continue
+				}
+				dr.Asks = append(dr.Asks, global.DepthPair{
+					Price: toFloat(a[0]),
+					Size:  toFloat(a[1]),
+				})
+			}
+			for _, b := range d.Bids {
+				if len(b) < 2 {
+					continue
+				}
+				dr.Bids = append(dr.Bids, global.DepthPair{
+					Price: toFloat(b[0]),
+					Size:  toFloat(b[1]),
+				})
+			}
+			ch <- dr
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
+	return ch, nil
+}
+
 // SubLateTrade 查询交易详细数据
 func (c *Client) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, error) {
 	c.once.Do(func() { c.wsConnect() })

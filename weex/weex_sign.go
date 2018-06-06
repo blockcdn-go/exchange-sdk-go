@@ -1,8 +1,8 @@
 package weex
 
 import (
-	"crypto/hmac"
 	"crypto/md5"
+	"fmt"
 	"log"
 	"net/url"
 	"reflect"
@@ -78,13 +78,12 @@ func sliceEncode(s []sortPair) string {
 	return str
 }
 
-func sign(apikey, apisec string, in map[string]interface{}) (string, string) {
-	afterSort := sortMap(in)
-	str := sliceEncode(afterSort)
-	h := hmac.New(md5.New, []byte(apikey))
+func sign(apikey, str string) string {
+
+	h := md5.New()
 	h.Write([]byte(str))
-	s := string(h.Sum(nil))
-	return strings.ToUpper(s), str
+	s := fmt.Sprintf("%x", h.Sum(nil))
+	return strings.ToUpper(s)
 }
 
 func toString(i interface{}) string {
@@ -95,17 +94,9 @@ func toString(i interface{}) string {
 	switch v.Kind() {
 	case reflect.String:
 		return v.String()
-	case reflect.Int:
-	case reflect.Int8:
-	case reflect.Int16:
-	case reflect.Int32:
-	case reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return strconv.FormatInt(v.Int(), 10)
-	case reflect.Uint:
-	case reflect.Uint8:
-	case reflect.Uint16:
-	case reflect.Uint32:
-	case reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return strconv.FormatUint(v.Uint(), 10)
 	case reflect.Float32:
 	case reflect.Float64:
@@ -124,22 +115,13 @@ func toFloat(i interface{}) float64 {
 	case reflect.String:
 		f, _ = strconv.ParseFloat(v.String(), 64)
 		break
-	case reflect.Int:
-	case reflect.Int8:
-	case reflect.Int16:
-	case reflect.Int32:
-	case reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		f = float64(v.Int())
 		break
-	case reflect.Uint:
-	case reflect.Uint8:
-	case reflect.Uint16:
-	case reflect.Uint32:
-	case reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		f = float64(v.Uint())
 		break
-	case reflect.Float32:
-	case reflect.Float64:
+	case reflect.Float32, reflect.Float64:
 		f = v.Float()
 		break
 	default:

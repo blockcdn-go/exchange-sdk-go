@@ -47,19 +47,25 @@ func (c *Client) httpReq(method, path string, in map[string]interface{}, out int
 		in = make(map[string]interface{})
 	}
 	if bs {
-		in["secret_key"] = *c.config.APIKey
+		in["access_id"] = *c.config.APIKey
 	}
+	presign := urlEncode(in)
 	if len(in) != 0 {
-		path += "?" + urlEncode(in)
+		path += "?" + presign
 	}
-
+	if bs {
+		presign += "&secret_key=" + *c.config.Secret
+	}
 	rbody, _ := json.Marshal(in)
+	if method == "GET" {
+		rbody = []byte{}
+	}
 	req, err := http.NewRequest(method, path, bytes.NewReader(rbody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) "+
 		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36")
 	if bs {
-		sign, _ := sign(*c.config.APIKey, *c.config.Secret, in)
+		sign := sign(*c.config.Secret, presign)
 		req.Header.Set("authorization", sign)
 	}
 	resp, err := c.config.HTTPClient.Do(req)

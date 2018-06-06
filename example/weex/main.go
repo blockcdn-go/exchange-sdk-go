@@ -3,13 +3,17 @@ package main
 import (
 	"fmt"
 
+	"github.com/blockcdn-go/exchange-sdk-go/config"
 	"github.com/blockcdn-go/exchange-sdk-go/global"
 
 	"github.com/blockcdn-go/exchange-sdk-go/weex"
 )
 
 func main() {
-	c := weex.NewClient(nil)
+	cfg := &config.Config{}
+	cfg.WithAPIKey("ea72f9d6-80a1-4bf7-8dfe-bd000c11e32f")
+	cfg.WithSecret("D54DD52FBEAA4EF5B98598B62BAC70A0DBB11BC716E84E7D70")
+	c := weex.NewClient(cfg)
 	s, err := c.GetAllSymbol()
 	fmt.Printf("%+v, %+v\n", err, s)
 
@@ -20,13 +24,20 @@ func main() {
 	})
 	fmt.Printf("%+v, %+v\n", err, k)
 
+	f, err := c.GetFund(global.FundReq{})
+	fmt.Printf("%+v, %+v\n", err, f)
+
 	tch, err := c.SubTicker(s[0])
+	dch, err := c.SubDepth(s[0])
 	lch, err := c.SubLateTrade(s[0])
 
 	for {
 		select {
 		case tk := <-tch:
 			fmt.Printf("notify %+v\n", tk)
+			break
+		case td := <-dch:
+			fmt.Printf("notify %+v\n", td)
 			break
 		case lt := <-lch:
 			fmt.Printf("notify %+v\n", lt)
