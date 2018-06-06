@@ -55,55 +55,55 @@ func (c *Client) GetAllAccountID() ([]Account, error) {
 }
 
 // GetKline 获取k线数据
-func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
+// func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
 
-	period := req.Period
-	if strings.Contains(period, "m") {
-		period = period + "in"
-	} else if period == "1h" {
-		period = "60m"
-	} else if strings.Contains(period, "h") {
-		period = period + "our"
-	} else if strings.Contains(period, "d") {
-		period = period + "ay"
-	} else if strings.Contains(period, "w") {
-		period = period + "eek"
-	}
-	arg := make(map[string]string)
-	arg["symbol"] = strings.ToLower(req.Base + req.Quote)
-	if req.Count != 0 {
-		arg["size"] = strconv.FormatInt(req.Count, 10)
-	}
-	arg["period"] = period
+// 	period := req.Period
+// 	if strings.Contains(period, "m") {
+// 		period = period + "in"
+// 	} else if period == "1h" {
+// 		period = "60m"
+// 	} else if strings.Contains(period, "h") {
+// 		period = period + "our"
+// 	} else if strings.Contains(period, "d") {
+// 		period = period + "ay"
+// 	} else if strings.Contains(period, "w") {
+// 		period = period + "eek"
+// 	}
+// 	arg := make(map[string]string)
+// 	arg["symbol"] = strings.ToLower(req.Base + req.Quote)
+// 	if req.Count != 0 {
+// 		arg["size"] = strconv.FormatInt(req.Count, 10)
+// 	}
+// 	arg["period"] = period
 
-	r := struct {
-		Status string  `json:"status"`
-		Ch     string  `json:"ch"`
-		Data   []Kline `json:"data"`
-		Errmsg string  `json:"err-msg"`
-	}{}
-	e := c.doHTTP("GET", "/market/history/kline", arg, &r)
-	if e != nil {
-		return nil, e
-	}
-	if r.Status != "ok" {
-		return nil, fmt.Errorf(r.Errmsg)
-	}
-	ik := []global.Kline{}
-	for _, k := range r.Data {
-		ik = append(ik, global.Kline{
-			Base:      k.Base,
-			Quote:     k.Quote,
-			Timestamp: int64(k.Timestamp),
-			High:      k.High,
-			Open:      k.Open,
-			Low:       k.Low,
-			Close:     k.Close,
-			Volume:    k.Volume,
-		})
-	}
-	return ik, nil
-}
+// 	r := struct {
+// 		Status string  `json:"status"`
+// 		Ch     string  `json:"ch"`
+// 		Data   []Kline `json:"data"`
+// 		Errmsg string  `json:"err-msg"`
+// 	}{}
+// 	e := c.doHTTP("GET", "/market/history/kline", arg, &r)
+// 	if e != nil {
+// 		return nil, e
+// 	}
+// 	if r.Status != "ok" {
+// 		return nil, fmt.Errorf(r.Errmsg)
+// 	}
+// 	ik := []global.Kline{}
+// 	for _, k := range r.Data {
+// 		ik = append(ik, global.Kline{
+// 			Base:      k.Base,
+// 			Quote:     k.Quote,
+// 			Timestamp: int64(k.Timestamp),
+// 			High:      k.High,
+// 			Open:      k.Open,
+// 			Low:       k.Low,
+// 			Close:     k.Close,
+// 			Volume:    k.Volume,
+// 		})
+// 	}
+// 	return ik, nil
+// }
 
 // GetFund 查询指定账户的余额
 // @parm accountID GetAllAccountID函数返回的id

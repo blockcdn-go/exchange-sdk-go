@@ -18,7 +18,7 @@ import (
 )
 
 // GetKline websocket 查询kline
-func (c *WSSClient) GetKline(req global.KlineReq) ([]global.Kline, error) {
+func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
 	conn, err := c.connect()
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func (c *WSSClient) GetKline(req global.KlineReq) ([]global.Kline, error) {
 // SubDepth 查询市场深度数据
 // type 可选值：{ step0, step1, step2, step3, step4, step5 } （合并深度0-5）；
 // step0时，不合并深度
-func (c *WSSClient) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
+func (c *Client) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
 	c.once.Do(func() { c.wsConnect() })
 	if c.sock == nil {
 		return nil, errors.New("connect failed")
@@ -118,7 +118,7 @@ func (c *WSSClient) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error)
 }
 
 // SubLateTrade 查询交易详细数据
-func (c *WSSClient) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, error) {
+func (c *Client) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, error) {
 	c.once.Do(func() { c.wsConnect() })
 	if c.sock == nil {
 		return nil, errors.New("connect failed")
@@ -144,7 +144,7 @@ func (c *WSSClient) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade
 }
 
 // SubTicker ...
-func (c *WSSClient) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) {
+func (c *Client) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) {
 	c.once.Do(func() { c.wsConnect() })
 	if c.sock == nil {
 		return nil, errors.New("connect failed")
@@ -169,14 +169,14 @@ func (c *WSSClient) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, erro
 	return ch, nil
 }
 
-func (c *WSSClient) connect() (*websocket.Conn, error) {
+func (c *Client) connect() (*websocket.Conn, error) {
 	u := url.URL{Scheme: "wss", Host: *c.config.WSSHost, Path: "/ws"}
 	log.Printf("huobi 连接 %s 中...\n", u.String())
 	conn, _, err := c.config.WSSDialer.Dial(u.String(), nil)
 	return conn, err
 }
 
-func (c *WSSClient) wsConnect() error {
+func (c *Client) wsConnect() error {
 	c.sock = nil
 	conn, err := c.connect()
 	if err != nil {
@@ -261,7 +261,7 @@ func (c *WSSClient) wsConnect() error {
 	return err
 }
 
-func (c *WSSClient) readWSMessage(conn *websocket.Conn) ([]byte, error) {
+func (c *Client) readWSMessage(conn *websocket.Conn) ([]byte, error) {
 	_, msg, err := conn.ReadMessage()
 	if err != nil {
 		return nil, err

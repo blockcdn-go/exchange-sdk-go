@@ -9,7 +9,7 @@ import (
 	"github.com/blockcdn-go/exchange-sdk-go/global"
 )
 
-func (c *WSSClient) parse(msg []byte) {
+func (c *Client) parse(msg []byte) {
 	t := struct {
 		CH     string `json:"ch"`
 		Ticker struct {

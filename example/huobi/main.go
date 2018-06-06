@@ -71,7 +71,7 @@ func main() {
 	// fmt.Println("GetMatchDetail: ", r6, e6)
 
 	cfg.WithWSSDialer(dialer)
-	wss := huobi.NewWSSClient(cfg)
+	wss := huobi.NewClient(cfg)
 
 	pair := global.TradeSymbol{Base: "btc", Quote: "usdt"}
 

@@ -23,7 +23,7 @@ import (
 )
 
 // WSSClient 是huobi sdk的调用客户端
-type WSSClient struct {
+type Client struct {
 	config    config.Config
 	replay    bool
 	once      sync.Once
@@ -34,14 +34,14 @@ type WSSClient struct {
 	latetrade map[global.TradeSymbol]chan global.LateTrade
 }
 
-// NewWSSClient 创建一个新的websocket客户端
-func NewWSSClient(config *config.Config) *WSSClient {
+// NewClient 创建一个新的websocket客户端
+func NewClient(config *config.Config) *Client {
 	cfg := defaultConfig()
 	if config != nil {
 		cfg.MergeIn(config)
 	}
 
-	return &WSSClient{
+	return &Client{
 		config:    *cfg,
 		tick:      make(map[global.TradeSymbol]chan global.Ticker),
 		depth:     make(map[global.TradeSymbol]chan global.Depth),
@@ -49,24 +49,9 @@ func NewWSSClient(config *config.Config) *WSSClient {
 	}
 }
 
-func (c *WSSClient) generateClientID() string {
+func (c *Client) generateClientID() string {
 	now := time.Now().UnixNano()
 	return strconv.FormatInt(now, 10)
-}
-
-// Client 提供火币 API的调用客户端
-type Client struct {
-	config config.Config
-}
-
-// NewClient 创建一个新的client
-func NewClient(config *config.Config) *Client {
-	cfg := defaultConfig()
-	if config != nil {
-		cfg.MergeIn(config)
-	}
-
-	return &Client{config: *cfg}
 }
 
 func (c *Client) doHTTP(method, path string, mapParams map[string]string, out interface{}) error {
