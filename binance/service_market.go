@@ -51,7 +51,7 @@ func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, erro
 				if err != nil {
 					return nil, nil
 				}
-				quantity, err := floatFromString(rawPrice)
+				quantity, err := floatFromString(rawQuantity)
 				if err != nil {
 					return nil, nil
 				}
