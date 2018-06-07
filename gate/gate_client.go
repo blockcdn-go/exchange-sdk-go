@@ -17,6 +17,7 @@ import (
 	"github.com/blockcdn-go/exchange-sdk-go/global"
 	"github.com/gotoxu/log/core"
 	"github.com/gotoxu/query"
+	"github.com/json-iterator/go/extra"
 )
 
 // Client 提供gate API的调用客户端
@@ -38,6 +39,8 @@ func NewClient(config *config.Config) *Client {
 	if config != nil {
 		cfg.MergeIn(config)
 	}
+
+	extra.RegisterFuzzyDecoders()
 
 	return &Client{
 		config:        *cfg,

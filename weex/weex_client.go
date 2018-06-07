@@ -12,7 +12,6 @@ import (
 	"github.com/blockcdn-go/exchange-sdk-go/global"
 	"github.com/gorilla/websocket"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/json-iterator/go/extra"
 )
 
 // Client 提供weex API的调用客户端
@@ -81,7 +80,7 @@ func (c *Client) httpReq(method, path string, in map[string]interface{}, out int
 		return err
 	}
 	fmt.Printf("http message: %s\n", string(body))
-	extra.RegisterFuzzyDecoders()
+	//extra.RegisterFuzzyDecoders()
 
 	err = jsoniter.Unmarshal(body, out)
 	if err != nil {

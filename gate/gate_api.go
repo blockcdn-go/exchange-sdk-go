@@ -9,7 +9,6 @@ import (
 
 	"github.com/blockcdn-go/exchange-sdk-go/global"
 	"github.com/json-iterator/go"
-	"github.com/json-iterator/go/extra"
 )
 
 // GetAllSymbol 交易市场详细行情接口
@@ -474,7 +473,7 @@ func (c *Client) httpReq(method, path string, in interface{}, out interface{}) e
 		fmt.Printf("http message: %s\n", string(body))
 	}
 
-	extra.RegisterFuzzyDecoders()
+	// extra.RegisterFuzzyDecoders()
 
 	err = jsoniter.Unmarshal(body, out)
 	if err != nil {

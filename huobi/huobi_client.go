@@ -19,7 +19,6 @@ import (
 	"github.com/blockcdn-go/exchange-sdk-go/config"
 	"github.com/gorilla/websocket"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/json-iterator/go/extra"
 )
 
 // WSSClient 是huobi sdk的调用客户端
@@ -118,7 +117,7 @@ func (c *Client) doHTTP(method, path string, mapParams map[string]string, out in
 		fmt.Printf("huobi http message:%s\n", string(body))
 	}
 
-	extra.RegisterFuzzyDecoders()
+	//extra.RegisterFuzzyDecoders()
 
 	err = jsoniter.Unmarshal(body, out)
 	if err != nil {
