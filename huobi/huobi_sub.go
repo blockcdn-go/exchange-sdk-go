@@ -94,7 +94,8 @@ func (c *Client) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
 	if c.sock == nil {
 		return nil, errors.New("connect failed")
 	}
-
+	sreq.Base = strings.ToUpper(sreq.Base)
+	sreq.Quote = strings.ToUpper(sreq.Quote)
 	symbol := strings.ToLower(sreq.Base + sreq.Quote)
 
 	topic := fmt.Sprintf("market.%s.depth.%s", symbol, "step0")
@@ -123,6 +124,8 @@ func (c *Client) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, e
 	if c.sock == nil {
 		return nil, errors.New("connect failed")
 	}
+	sreq.Base = strings.ToUpper(sreq.Base)
+	sreq.Quote = strings.ToUpper(sreq.Quote)
 	symbol := strings.ToLower(sreq.Base + sreq.Quote)
 
 	topic := fmt.Sprintf("market.%s.trade.detail", symbol)
@@ -149,6 +152,8 @@ func (c *Client) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) 
 	if c.sock == nil {
 		return nil, errors.New("connect failed")
 	}
+	sreq.Base = strings.ToUpper(sreq.Base)
+	sreq.Quote = strings.ToUpper(sreq.Quote)
 	symbol := strings.ToLower(sreq.Base + sreq.Quote)
 	topic := fmt.Sprintf("market.%s.detail", symbol)
 	req := struct {

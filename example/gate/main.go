@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+
 	//"log"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
@@ -29,7 +30,7 @@ func main() {
 
 	c := gate.NewClient(cfg)
 
-	resp, err := c.MarketList()
+	resp, err := c.GetAllSymbol()
 	if err != nil {
 		log.Fatal("error: ", err)
 	}
@@ -43,10 +44,21 @@ func main() {
 	depth, e1 := c.DepthInfo("bcdn", "usdt")
 	fmt.Print("DepthInfo", depth, e1)
 
-	//////////////////////////////////
+	tch, err := c.SubTicker(resp[0])
+	dch, err := c.SubDepth(resp[0])
+	lch, err := c.SubLateTrade(resp[0])
 
-	b, e2 := c.BalanceInfo()
-	fmt.Println("BalanceInfo", b, e2)
+	for {
+		select {
+		case tk := <-tch:
+			fmt.Printf("ticker %+v\n", tk)
+		case dp := <-dch:
+			fmt.Printf("depth %+v\n", dp)
+		case lt := <-lch:
+			fmt.Printf("latetrade %+v\n", lt)
+		}
+	}
+	//////////////////////////////////
 
 	//	r3, e3 := c.DepositAddr("bcdn")
 	//	fmt.Println("DepositAddr ", r3, e3)
@@ -66,5 +78,4 @@ func main() {
 	//	r8, e8 := c.MatchInfo("bcdn_usdt", "")
 	//	fmt.Println("MatchInfo ", r8, e8)
 
-	fmt.Println("CancelOrder ", c.CancelOrder("bcdn_usdt", "528514518"))
 }

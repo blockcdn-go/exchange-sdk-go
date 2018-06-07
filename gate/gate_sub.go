@@ -10,24 +10,28 @@ import (
 
 // SubTicker ...
 func (c *Client) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) {
+	sreq.Base = strings.ToUpper(sreq.Base)
+	sreq.Quote = strings.ToUpper(sreq.Quote)
 	ch := make(chan global.Ticker, 100)
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.tick[sreq] = ch
 
-	c.tickonce.Do(func() { c.loopTicker() })
+	c.tickonce.Do(func() { go c.loopTicker() })
 
 	return ch, nil
 }
 
 // SubDepth 订阅深度行情
 func (c *Client) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
+	sreq.Base = strings.ToUpper(sreq.Base)
+	sreq.Quote = strings.ToUpper(sreq.Quote)
 	ch := make(chan global.Depth, 100)
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.depth[sreq] = ch
 
-	c.depthonce.Do(func() { c.loopDepth() })
+	c.depthonce.Do(func() { go c.loopDepth() })
 
 	return ch, nil
 }
@@ -132,6 +136,8 @@ func (c *Client) loopDepth() {
 
 // SubLateTrade 查询交易详细数据
 func (c *Client) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, error) {
+	sreq.Base = strings.ToUpper(sreq.Base)
+	sreq.Quote = strings.ToUpper(sreq.Quote)
 	ch := make(chan global.LateTrade, 100)
 
 	go func() {
@@ -191,5 +197,5 @@ func split(s string) (string, string) {
 	if len(bq) != 2 {
 		return s, "error"
 	}
-	return bq[0], bq[1]
+	return strings.ToUpper(bq[0]), strings.ToUpper(bq[1])
 }
