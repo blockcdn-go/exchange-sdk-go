@@ -81,6 +81,7 @@ type Fund struct {
 
 // InsertReq 请求下单参数
 type InsertReq struct {
+	APIKey    string  `json:"apikey"` // weex 需要
 	Base      string  `json:"base"`
 	Quote     string  `json:"quote"`
 	Price     float64 `json:"price"`
@@ -96,6 +97,7 @@ type InsertRsp struct {
 
 // StatusReq 查询订单状态
 type StatusReq struct {
+	APIKey  string `json:"apikey"` // weex 需要
 	Base    string `json:"base"`
 	Quote   string `json:"quote"`
 	OrderNo string `json:"orderno"`
@@ -127,6 +129,7 @@ type StatusRsp struct {
 
 // CancelReq 撤单请求参数
 type CancelReq struct {
+	APIKey  string `json:"apikey"` // weex 需要
 	Base    string `json:"base"`
 	Quote   string `json:"quote"`
 	OrderNo string `json:"orderno"`

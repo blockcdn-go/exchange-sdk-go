@@ -27,6 +27,22 @@ func main() {
 	f, err := c.GetFund(global.FundReq{})
 	fmt.Printf("%+v, %+v\n", err, f)
 
+	i, err := c.InsertOrder(global.InsertReq{
+		APIKey: "ea72f9d6-80a1-4bf7-8dfe-bd000c11e32f",
+		Base:   s[0].Base,
+		Quote:  s[0].Quote,
+		Price:  100,
+		Num:    100,
+	})
+	fmt.Printf("%+v, %+v\n", err, i)
+
+	o, err := c.OrderStatus(global.StatusReq{
+		APIKey: "ea72f9d6-80a1-4bf7-8dfe-bd000c11e32f",
+		Base:   s[0].Base,
+		Quote:  s[0].Quote,
+	})
+	fmt.Printf("%+v, %+v\n", err, o)
+
 	tch, err := c.SubTicker(s[0])
 	dch, err := c.SubDepth(s[0])
 	lch, err := c.SubLateTrade(s[0])
