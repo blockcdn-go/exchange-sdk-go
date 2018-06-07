@@ -222,11 +222,11 @@ func (as *apiService) OrderStatus(qor global.StatusReq) (global.StatusRsp, error
 	m.TradePrice = or.ExecutePrice
 	m.TradeNum = or.ExecutedQty
 
-	if or.ExecutedQty != 0. || or.Status == StatusPartiallyFilled {
+	if or.Status == StatusPartiallyFilled {
 		m.Status = global.HALFTRADE
 		m.StatusMsg = "部分成交"
 	}
-	if or.ExecutedQty == or.OrigQty || or.Status == StatusFilled {
+	if or.Status == StatusFilled {
 		m.Status = global.COMPLETETRADE
 		m.StatusMsg = "完全成交"
 	}

@@ -348,17 +348,13 @@ func (c *Client) OrderStatus(req global.StatusReq) (global.StatusRsp, error) {
 
 	or := &r.Order
 	m := global.StatusRsp{}
-	n, e := strconv.ParseFloat(or.TradeNum, 64)
+	n, e := strconv.ParseFloat(or.InsertNum, 64)
 	if e != nil {
 		return m, e
 	}
 	m.TradePrice = or.TradePrice
 	m.TradeNum = n
-	if n != 0. {
-		m.Status = global.HALFTRADE
-		m.StatusMsg = "部分成交"
-	}
-	if or.Status == "done" {
+	if or.Status == "closed" {
 		m.Status = global.COMPLETETRADE
 		m.StatusMsg = "完全成交"
 	}

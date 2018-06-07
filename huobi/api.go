@@ -244,7 +244,7 @@ func (c *Client) OrderStatus(req global.StatusReq) (global.StatusRsp, error) {
 	m := global.StatusRsp{}
 	m.TradePrice, _ = strconv.ParseFloat(or.TradePrice, 64)
 	m.TradeNum, _ = strconv.ParseFloat(or.TradeNum, 64)
-	if m.TradeNum != 0. || or.OrderStatus == "partial-canceled" {
+	if or.OrderStatus == "partial-filled" {
 		m.Status = global.HALFTRADE
 		m.StatusMsg = "部分成交"
 	}
