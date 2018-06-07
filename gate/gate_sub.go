@@ -68,9 +68,9 @@ func (c *Client) loopTicker() {
 					Volume:             v.BaseVolume,
 				}
 			}
-			//
-			time.Sleep(10 * time.Second)
 		}
+		//
+		time.Sleep(10 * time.Second)
 	}
 }
 
