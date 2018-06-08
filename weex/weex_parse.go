@@ -2,7 +2,6 @@ package weex
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -16,7 +15,6 @@ func (c *Client) parse(msg []byte) {
 		Params []interface{} `json:"params"`
 	}{Params: []interface{}{}}
 
-	fmt.Println(string(msg))
 	err := json.Unmarshal(msg, &r)
 	if err != nil || r.Method == "" || len(r.Params) == 0 {
 		return
