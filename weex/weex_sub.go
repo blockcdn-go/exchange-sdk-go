@@ -18,24 +18,27 @@ func (c *Client) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) 
 		return nil, errors.New("wsconnect failed")
 	}
 	ch := make(chan global.Ticker, 100)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.tick[sreq] = ch
 
 	sreq.Base, sreq.Quote = strings.ToUpper(sreq.Base), strings.ToUpper(sreq.Quote)
-	symbol := sreq.Base + sreq.Quote
+
 	req := struct {
 		ID     int64    `json:"id"`
 		Method string   `json:"method"`
 		Params []string `json:"params"`
 	}{ID: time.Now().Unix(), Method: "today.subscribe", Params: []string{}}
-	req.Params = append(req.Params, symbol)
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	for k := range c.tick {
+		req.Params = append(req.Params, strings.ToUpper(k.Base+k.Quote))
+	}
 
 	err := c.sock.WriteJSON(req)
 	if err != nil {
-		log.Printf("发送消息失败 %s %s\n", symbol, err.Error())
+		log.Printf("发送消息失败 %+v %s\n", req, err.Error())
 		return nil, err
 	}
-	c.tick[sreq] = ch
+
 	return ch, nil
 }
 
@@ -99,23 +102,26 @@ func (c *Client) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, e
 		return nil, errors.New("wsconnect failed")
 	}
 	ch := make(chan global.LateTrade, 100)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.latetrade[sreq] = ch
+
 	sreq.Base, sreq.Quote = strings.ToUpper(sreq.Base), strings.ToUpper(sreq.Quote)
-	symbol := sreq.Base + sreq.Quote
 	req := struct {
 		ID     int64    `json:"id"`
 		Method string   `json:"method"`
 		Params []string `json:"params"`
 	}{ID: time.Now().Unix(), Method: "deals.subscribe", Params: []string{}}
-	req.Params = append(req.Params, symbol)
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	for k := range c.depth {
+		req.Params = append(req.Params, strings.ToUpper(k.Base+k.Quote))
+	}
 
 	err := c.sock.WriteJSON(req)
 	if err != nil {
-		log.Printf("发送消息失败 %s %s\n", symbol, err.Error())
+		log.Printf("发送消息失败 %+v %s\n", req, err.Error())
 		return nil, err
 	}
-	c.latetrade[sreq] = ch
+
 	return ch, nil
 }
 
@@ -130,6 +136,7 @@ func (c *Client) wsConnect() error {
 	c.sock = nil
 	conn, err := c.connect()
 	if err != nil {
+		log.Printf("weex connect failed %+v\n", err)
 		c.sock = nil
 		return err
 	}
@@ -138,38 +145,32 @@ func (c *Client) wsConnect() error {
 	//在这儿进行订阅消息重放
 	if c.replay {
 		log.Printf("连接成功，进行消息重放\n")
+		req := struct {
+			ID     int64    `json:"id"`
+			Method string   `json:"method"`
+			Params []string `json:"params"`
+		}{ID: time.Now().Unix(), Method: "today.subscribe", Params: []string{}}
+		c.mutex.Lock()
 		for k := range c.tick {
-			symbol := strings.ToUpper(k.Base + k.Quote)
-			req := struct {
-				ID     int64    `json:"id"`
-				Method string   `json:"method"`
-				Params []string `json:"params"`
-			}{ID: time.Now().Unix(), Method: "today.subscribe", Params: []string{}}
-			req.Params = append(req.Params, symbol)
-			c.mutex.Lock()
-			err := c.sock.WriteJSON(req)
-			c.mutex.Unlock()
-			if err != nil {
-				log.Printf("订阅消息重放失败 %s %s\n", symbol, err.Error())
-			}
+			req.Params = append(req.Params, strings.ToUpper(k.Base+k.Quote))
+		}
+		err := c.sock.WriteJSON(req)
+		if err != nil {
+			log.Printf("订阅消息重放失败 %+v %s\n", req, err.Error())
 		}
 
-		//
+		req.Params = []string{}
+		req.Method = "deals.subscribe"
 		for k := range c.latetrade {
-			symbol := strings.ToUpper(k.Base + k.Quote)
-			req := struct {
-				ID     int64    `json:"id"`
-				Method string   `json:"method"`
-				Params []string `json:"params"`
-			}{ID: time.Now().Unix(), Method: "deals.subscribe", Params: []string{}}
-			req.Params = append(req.Params, symbol)
-			c.mutex.Lock()
-			err := c.sock.WriteJSON(req)
-			c.mutex.Unlock()
-			if err != nil {
-				log.Printf("订阅消息重放失败 %s %s\n", symbol, err.Error())
-			}
+			req.Params = append(req.Params, strings.ToUpper(k.Base+k.Quote))
 		}
+		err = c.sock.WriteJSON(req)
+		if err != nil {
+			log.Printf("订阅消息重放失败 %+v %s\n", req, err.Error())
+		}
+
+		c.mutex.Unlock()
+
 	}
 	c.replay = true
 	// 循环读取消息

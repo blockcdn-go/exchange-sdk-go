@@ -2,6 +2,7 @@ package binance
 
 import (
 	"log"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +36,9 @@ func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, erro
 	ch := make(chan global.Depth, 100)
 
 	go func() {
+		rand.Seed(time.Now().Unix())
+		rms := rand.Intn(2000)
+		time.Sleep(time.Duration(rms) * time.Millisecond)
 		for {
 			rawBook := &struct {
 				LastUpdateID int             `json:"lastUpdateId"`
@@ -44,7 +48,7 @@ func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, erro
 			err := as.request("GET", "api/v1/depth", params, &rawBook, false, false)
 			if err != nil {
 				log.Printf("binance depth error : %+v\n", err)
-				time.Sleep(10 * time.Second)
+				time.Sleep(time.Duration(rand.Intn(2000)+10000) * time.Millisecond)
 				continue
 			}
 			extractOrder := func(rawPrice, rawQuantity interface{}) (*Order, error) {
@@ -90,7 +94,7 @@ func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, erro
 			// cvt
 
 			ch <- r
-			time.Sleep(10 * time.Second)
+			time.Sleep(time.Duration(rand.Intn(2000)+10000) * time.Millisecond)
 		}
 	}()
 

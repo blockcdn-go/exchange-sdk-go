@@ -79,7 +79,7 @@ func (c *Client) httpReq(method, path string, in map[string]interface{}, out int
 	if err != nil {
 		return err
 	}
-	fmt.Printf("http message: %s\n", string(body))
+	//fmt.Printf("http message: %s\n", string(body))
 	//extra.RegisterFuzzyDecoders()
 
 	err = jsoniter.Unmarshal(body, out)

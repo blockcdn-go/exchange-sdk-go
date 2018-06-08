@@ -104,14 +104,20 @@ func (c *Client) loopDepth() {
 
 			if len(t.Asks) >= 2 && t.Asks[0][0] > t.Asks[1][0] {
 				// 卖 倒序
-				for end := len(t.Asks); end > len(t.Asks)-5; end-- {
+				for end := len(t.Asks); end > len(t.Asks); end-- {
+					if len(t.Asks[end-1]) < 2 {
+						continue
+					}
 					dp.Asks = append(dp.Asks, global.DepthPair{
 						Price: t.Asks[end-1][0],
 						Size:  t.Asks[end-1][1],
 					})
 				}
 			} else {
-				for i := 0; i < 5; i++ {
+				for i := 0; i < len(t.Asks); i++ {
+					if len(t.Asks[i]) < 2 {
+						continue
+					}
 					dp.Asks = append(dp.Asks, global.DepthPair{
 						Price: t.Asks[i][0],
 						Size:  t.Asks[i][1],
@@ -120,7 +126,10 @@ func (c *Client) loopDepth() {
 			}
 
 			// 买
-			for i := 0; i < 5; i++ {
+			for i := 0; i < len(t.Bids); i++ {
+				if len(t.Bids[i]) < 2 {
+					continue
+				}
 				dp.Bids = append(dp.Bids, global.DepthPair{
 					Price: t.Bids[i][0],
 					Size:  t.Bids[i][1],
