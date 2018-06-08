@@ -41,9 +41,10 @@ func (c *Client) TickerInfo(base, quote string) (TickerResponse, error) {
 	return result, e
 }
 
-// DepthInfo 获取深度行情
-func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
-	path := fmt.Sprintf("/api2/1/orderBook/%s_%s", base, quote)
+// GetDepth 获取深度行情
+func (c *Client) GetDepth(sreq global.TradeSymbol) (global.Depth, error) {
+	symbol := strings.ToLower(sreq.Base + "_" + sreq.Quote)
+	path := fmt.Sprintf("/api2/1/orderBook/%s", symbol)
 	t := struct {
 		Asks [][]float64 `json:"asks"` //卖方深度
 		Bids [][]float64 `json:"bids"` //买方深度
@@ -51,30 +52,48 @@ func (c *Client) DepthInfo(base, quote string) (Depth5, error) {
 
 	e := c.httpReq("GET", path, nil, &t)
 	if e != nil {
-		return Depth5{}, e
+		return global.Depth{}, e
 	}
-	if len(t.Asks) < 5 || len(t.Bids) < 5 {
-		return Depth5{}, fmt.Errorf("depth len < 5")
+
+	r := global.Depth{
+		Base:  sreq.Base,
+		Quote: sreq.Quote,
+		Asks:  []global.DepthPair{},
+		Bids:  []global.DepthPair{},
 	}
-	var r Depth5
-	r.Base = base
-	r.Quote = quote
-	r.Asks = make([]PSpair, 0, 5)
-	r.Bids = make([]PSpair, 0, 5)
+
 	if len(t.Asks) >= 2 && t.Asks[0][0] > t.Asks[1][0] {
 		// 卖 倒序
-		for end := len(t.Asks); end > len(t.Asks)-5; end-- {
-			r.Asks = append(r.Asks, PSpair{t.Asks[end-1][0], t.Asks[end-1][1]})
+		for end := len(t.Asks); end != 0; end-- {
+			if len(t.Asks[end-1]) < 2 {
+				continue
+			}
+			r.Asks = append(r.Asks, global.DepthPair{
+				Price: t.Asks[end-1][0],
+				Size:  t.Asks[end-1][1],
+			})
 		}
 	} else {
-		for i := 0; i < 5; i++ {
-			r.Asks = append(r.Asks, PSpair{t.Asks[i][0], t.Asks[i][1]})
+		for i := 0; i < len(t.Asks); i++ {
+			if len(t.Asks[i]) < 2 {
+				continue
+			}
+			r.Asks = append(r.Asks, global.DepthPair{
+				Price: t.Asks[i][0],
+				Size:  t.Asks[i][1],
+			})
 		}
 	}
 
 	// 买
-	for i := 0; i < 5; i++ {
-		r.Bids = append(r.Bids, PSpair{t.Bids[i][0], t.Bids[i][1]})
+	for i := 0; i < len(t.Bids); i++ {
+		if len(t.Bids[i]) < 2 {
+			continue
+		}
+		r.Bids = append(r.Bids, global.DepthPair{
+			Price: t.Bids[i][0],
+			Size:  t.Bids[i][1],
+		})
 	}
 	return r, nil
 }

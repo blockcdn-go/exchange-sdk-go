@@ -143,6 +143,8 @@ type WSif interface {
 	SubDepth(TradeSymbol) (chan Depth, error)
 	// 订阅最近成交
 	SubLateTrade(TradeSymbol) (chan LateTrade, error)
+	// 查询深度行情
+	GetDepth(TradeSymbol) (Depth, error)
 }
 
 // APIif 各个交易所需要实现的接口

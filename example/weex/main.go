@@ -24,6 +24,9 @@ func main() {
 	})
 	fmt.Printf("%+v, %+v\n", err, k)
 
+	gd, err := c.GetDepth(s[0])
+	fmt.Printf("%+v, %+v\n", err, gd)
+
 	f, err := c.GetFund(global.FundReq{})
 	fmt.Printf("%+v, %+v\n", err, f)
 
@@ -45,15 +48,19 @@ func main() {
 
 	tch, err := c.SubTicker(s[0])
 	dch, err := c.SubDepth(s[0])
+	dch1, err := c.SubDepth(s[1])
 	lch, err := c.SubLateTrade(s[0])
 
 	for {
 		select {
+		case td := <-dch:
+			fmt.Printf("notify depth1 %+v\n", td)
+			break
+		case td1 := <-dch1:
+			fmt.Printf("notify depth2 %+v\n", td1)
+			break
 		case tk := <-tch:
 			fmt.Printf("notify %+v\n", tk)
-			break
-		case td := <-dch:
-			fmt.Printf("notify %+v\n", td)
 			break
 		case lt := <-lch:
 			fmt.Printf("notify %+v\n", lt)

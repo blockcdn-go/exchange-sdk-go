@@ -39,6 +39,18 @@
 			"revisionTime": "2018-04-08T00:25:46Z"
 		},
 		{
+			"checksumSHA1": "ns0uvoQohIixCuw99GuyBkB01ng=",
+			"path": "github.com/lestrrat/go-file-rotatelogs",
+			"revision": "d3151e2a480fdcd05fb97102f5310a47d96274c4",
+			"revisionTime": "2018-02-23T00:06:17Z"
+		},
+		{
+			"checksumSHA1": "QpgwzqZxqxEfKd8MrGYoouArsrM=",
+			"path": "github.com/lestrrat/go-strftime",
+			"revision": "ba3bf9c1d0421aa146564a632931730344f1f9f1",
+			"revisionTime": "2018-02-20T04:22:22Z"
+		},
+		{
 			"checksumSHA1": "ZTcgWKWHsrX0RXYVXn5Xeb8Q0go=",
 			"path": "github.com/modern-go/concurrent",
 			"revision": "bacd9c7ef1dd9b15be4a9909b8ac7a4e313eec94",
@@ -49,6 +61,38 @@
 			"path": "github.com/modern-go/reflect2",
 			"revision": "05fbef0ca5da472bbf96c9322b84a53edc03c9fd",
 			"revisionTime": "2018-03-20T13:32:07Z"
+		},
+		{
+			"checksumSHA1": "d6BycwPpKXW09I/tXMqcItE8SA4=",
+			"path": "github.com/pkg/errors",
+			"revision": "816c9085562cd7ee03e7f8188a1cfd942858cded",
+			"revisionTime": "2018-03-11T21:45:15Z"
+		},
+		{
+			"checksumSHA1": "Ex8BNuG+GV7MJPr/DuEH7yLP6C0=",
+			"path": "github.com/rifflock/lfshook",
+			"revision": "62f5e0662816a462697d29f396fd19376d17f65b",
+			"revisionTime": "2018-03-13T18:34:24Z"
+		},
+		{
+			"checksumSHA1": "f8y4LVtdZmbDfQCbT5PT9StCIuY=",
+			"path": "github.com/shippomx/meegolog",
+			"revision": "6d4428c847bc561e86512afc4b05a5006fe9a2a3",
+			"revisionTime": "2018-03-18T01:29:30Z"
+		},
+		{
+			"checksumSHA1": "6Ia3YgsRytBcSHe5HR/orFGBJfs=",
+			"path": "github.com/sirupsen/logrus",
+			"revision": "ea8897e79973357ba785ac2533559a6297e83c44",
+			"revisionTime": "2018-05-23T07:42:43Z"
+		},
+		{
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": ""
+		},
+		{
+			"path": "golang.org/x/sys/unix",
+			"revision": ""
 		}
 	],
 	"rootPath": "github.com/blockcdn-go/exchange-sdk-go"

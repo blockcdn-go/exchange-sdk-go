@@ -42,57 +42,55 @@ func (c *Client) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) 
 	return ch, nil
 }
 
-// SubDepth 订阅深度行情，使用rest接口查询实现
+// SubDepth 订阅深度行情
 func (c *Client) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
-	in := make(map[string]interface{})
-	in["market"] = strings.ToLower(sreq.Base + sreq.Quote)
-	in["limit"] = 100
-	in["merge"] = "0"
+	con, err := c.connect()
+	if con == nil {
+		return nil, err
+	}
+	sreq.Base, sreq.Quote = strings.ToUpper(sreq.Base), strings.ToUpper(sreq.Quote)
 
-	ch := make(chan global.Depth, 100)
-	go func() {
-		for {
-			d := struct {
-				Asks [][]string `json:"asks"`
-				Bids [][]string `json:"bids"`
-			}{}
-			r := weexRsp{Data: &d}
-			err := c.httpReq("GET", "https://api.weex.com/v1/market/depth", in, &r, false)
-			if err != nil || r.Code != 0 {
-				log.Printf("weex get depth error: %+v, msg:%s\n", err, r.Msg)
-				time.Sleep(10 * time.Second)
-				continue
-			}
-			dr := global.Depth{
-				Base:  sreq.Base,
-				Quote: sreq.Quote,
-				Asks:  []global.DepthPair{},
-				Bids:  []global.DepthPair{},
-			}
-			for _, a := range d.Asks {
-				if len(a) < 2 {
-					continue
-				}
-				dr.Asks = append(dr.Asks, global.DepthPair{
-					Price: toFloat(a[0]),
-					Size:  toFloat(a[1]),
-				})
-			}
-			for _, b := range d.Bids {
-				if len(b) < 2 {
-					continue
-				}
-				dr.Bids = append(dr.Bids, global.DepthPair{
-					Price: toFloat(b[0]),
-					Size:  toFloat(b[1]),
-				})
-			}
-			ch <- dr
-			time.Sleep(10 * time.Second)
-		}
-	}()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	ch, ok := c.depth[sreq]
+	if !ok {
+		ch = make(chan global.Depth, 100)
+		c.depth[sreq] = ch
+	}
 
+	req := struct {
+		ID     int64         `json:"id"`
+		Method string        `json:"method"`
+		Params []interface{} `json:"params"`
+	}{ID: time.Now().Unix(), Method: "depth.subscribe", Params: []interface{}{}}
+	req.Params = append(req.Params, sreq.Base+sreq.Quote, 20, "0")
+
+	err = con.WriteJSON(req)
+	if err != nil {
+		log.Printf("发送消息失败 %+v %s\n", req, err.Error())
+		return nil, err
+	}
+
+	go c.depthLoop(sreq, con)
 	return ch, nil
+}
+
+func (c *Client) depthLoop(sreq global.TradeSymbol, con *websocket.Conn) {
+	for {
+		msg, err := c.readWSMessage(con)
+		if err != nil {
+			for {
+				log.Printf("weex disconnect %+v, reconnect after five seconds\n", err)
+				time.Sleep(5 * time.Second)
+				_, err := c.SubDepth(sreq)
+				if err != nil {
+					break
+				}
+			}
+			return
+		}
+		c.parse(msg)
+	}
 }
 
 // SubLateTrade 查询交易详细数据

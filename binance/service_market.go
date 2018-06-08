@@ -2,7 +2,6 @@ package binance
 
 import (
 	"log"
-	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -28,77 +27,135 @@ func (as *apiService) GetAllSymbol() ([]global.TradeSymbol, error) {
 	return rr, nil
 }
 
-func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
+// func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
+// 	params := make(map[string]string)
+// 	params["symbol"] = strings.ToUpper(sreq.Base + sreq.Quote)
+// 	params["limit"] = "100"
+
+// 	ch := make(chan global.Depth, 100)
+
+// 	go func() {
+// 		rand.Seed(time.Now().Unix())
+// 		rms := rand.Intn(2000)
+// 		time.Sleep(time.Duration(rms) * time.Millisecond)
+// 		for {
+// 			rawBook := &struct {
+// 				LastUpdateID int             `json:"lastUpdateId"`
+// 				Bids         [][]interface{} `json:"bids"`
+// 				Asks         [][]interface{} `json:"asks"`
+// 			}{}
+// 			err := as.request("GET", "api/v1/depth", params, &rawBook, false, false)
+// 			if err != nil {
+// 				log.Printf("binance depth error : %+v\n", err)
+// 				time.Sleep(time.Duration(rand.Intn(2000)+10000) * time.Millisecond)
+// 				continue
+// 			}
+// 			extractOrder := func(rawPrice, rawQuantity interface{}) (*Order, error) {
+// 				price, err := floatFromString(rawPrice)
+// 				if err != nil {
+// 					return nil, nil
+// 				}
+// 				quantity, err := floatFromString(rawQuantity)
+// 				if err != nil {
+// 					return nil, nil
+// 				}
+// 				return &Order{
+// 					Price:    price,
+// 					Quantity: quantity,
+// 				}, nil
+// 			}
+// 			r := global.Depth{
+// 				Base:  sreq.Base,
+// 				Quote: sreq.Quote,
+// 				Asks:  []global.DepthPair{},
+// 				Bids:  []global.DepthPair{},
+// 			}
+// 			for _, bid := range rawBook.Bids {
+// 				order, err := extractOrder(bid[0], bid[1])
+// 				if err != nil {
+// 					continue
+// 				}
+// 				r.Bids = append(r.Bids, global.DepthPair{
+// 					Price: order.Price,
+// 					Size:  order.Quantity,
+// 				})
+// 			}
+// 			for _, ask := range rawBook.Asks {
+// 				order, err := extractOrder(ask[0], ask[1])
+// 				if err != nil {
+// 					continue
+// 				}
+// 				r.Asks = append(r.Asks, global.DepthPair{
+// 					Price: order.Price,
+// 					Size:  order.Quantity,
+// 				})
+// 			}
+// 			// cvt
+
+// 			ch <- r
+// 			time.Sleep(time.Duration(rand.Intn(2000)+10000) * time.Millisecond)
+// 		}
+// 	}()
+
+// 	return ch, nil
+// }
+
+func (as *apiService) GetDepth(sreq global.TradeSymbol) (global.Depth, error) {
 	params := make(map[string]string)
 	params["symbol"] = strings.ToUpper(sreq.Base + sreq.Quote)
 	params["limit"] = "100"
 
-	ch := make(chan global.Depth, 100)
-
-	go func() {
-		rand.Seed(time.Now().Unix())
-		rms := rand.Intn(2000)
-		time.Sleep(time.Duration(rms) * time.Millisecond)
-		for {
-			rawBook := &struct {
-				LastUpdateID int             `json:"lastUpdateId"`
-				Bids         [][]interface{} `json:"bids"`
-				Asks         [][]interface{} `json:"asks"`
-			}{}
-			err := as.request("GET", "api/v1/depth", params, &rawBook, false, false)
-			if err != nil {
-				log.Printf("binance depth error : %+v\n", err)
-				time.Sleep(time.Duration(rand.Intn(2000)+10000) * time.Millisecond)
-				continue
-			}
-			extractOrder := func(rawPrice, rawQuantity interface{}) (*Order, error) {
-				price, err := floatFromString(rawPrice)
-				if err != nil {
-					return nil, nil
-				}
-				quantity, err := floatFromString(rawQuantity)
-				if err != nil {
-					return nil, nil
-				}
-				return &Order{
-					Price:    price,
-					Quantity: quantity,
-				}, nil
-			}
-			r := global.Depth{
-				Base:  sreq.Base,
-				Quote: sreq.Quote,
-				Asks:  []global.DepthPair{},
-				Bids:  []global.DepthPair{},
-			}
-			for _, bid := range rawBook.Bids {
-				order, err := extractOrder(bid[0], bid[1])
-				if err != nil {
-					continue
-				}
-				r.Bids = append(r.Bids, global.DepthPair{
-					Price: order.Price,
-					Size:  order.Quantity,
-				})
-			}
-			for _, ask := range rawBook.Asks {
-				order, err := extractOrder(ask[0], ask[1])
-				if err != nil {
-					continue
-				}
-				r.Asks = append(r.Asks, global.DepthPair{
-					Price: order.Price,
-					Size:  order.Quantity,
-				})
-			}
-			// cvt
-
-			ch <- r
-			time.Sleep(time.Duration(rand.Intn(2000)+10000) * time.Millisecond)
+	rawBook := &struct {
+		LastUpdateID int             `json:"lastUpdateId"`
+		Bids         [][]interface{} `json:"bids"`
+		Asks         [][]interface{} `json:"asks"`
+	}{}
+	err := as.request("GET", "api/v1/depth", params, &rawBook, false, false)
+	if err != nil {
+		log.Printf("binance depth error : %+v\n", err)
+		return global.Depth{}, err
+	}
+	extractOrder := func(rawPrice, rawQuantity interface{}) (*Order, error) {
+		price, err := floatFromString(rawPrice)
+		if err != nil {
+			return nil, nil
 		}
-	}()
-
-	return ch, nil
+		quantity, err := floatFromString(rawQuantity)
+		if err != nil {
+			return nil, nil
+		}
+		return &Order{
+			Price:    price,
+			Quantity: quantity,
+		}, nil
+	}
+	r := global.Depth{
+		Base:  sreq.Base,
+		Quote: sreq.Quote,
+		Asks:  []global.DepthPair{},
+		Bids:  []global.DepthPair{},
+	}
+	for _, bid := range rawBook.Bids {
+		order, err := extractOrder(bid[0], bid[1])
+		if err != nil {
+			continue
+		}
+		r.Bids = append(r.Bids, global.DepthPair{
+			Price: order.Price,
+			Size:  order.Quantity,
+		})
+	}
+	for _, ask := range rawBook.Asks {
+		order, err := extractOrder(ask[0], ask[1])
+		if err != nil {
+			continue
+		}
+		r.Asks = append(r.Asks, global.DepthPair{
+			Price: order.Price,
+			Size:  order.Quantity,
+		})
+	}
+	return r, nil
 }
 
 func (as *apiService) AggTrades(atr AggTradesRequest) ([]*AggTrade, error) {

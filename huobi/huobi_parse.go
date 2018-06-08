@@ -85,13 +85,19 @@ func (c *Client) parse(msg []byte) {
 		}
 		if len(t.Ticker.Asks) >= 2 && t.Ticker.Asks[0][0] > t.Ticker.Asks[1][0] {
 			// 卖 倒序
-			for end := len(t.Ticker.Asks); end > 0; end-- {
+			for end := len(t.Ticker.Asks); end != 0; end-- {
+				if len(t.Ticker.Asks[end-1]) < 2 {
+					continue
+				}
 				ret.Asks = append(ret.Asks, global.DepthPair{
 					Price: t.Ticker.Asks[end-1][0],
 					Size:  t.Ticker.Asks[end-1][1]})
 			}
 		} else {
 			for i := 0; i < len(t.Ticker.Asks); i++ {
+				if len(t.Ticker.Asks[i]) < 2 {
+					continue
+				}
 				ret.Asks = append(ret.Asks, global.DepthPair{Price: t.Ticker.Asks[i][0],
 					Size: t.Ticker.Asks[i][1]})
 			}
@@ -99,6 +105,9 @@ func (c *Client) parse(msg []byte) {
 
 		// 买
 		for i := 0; i < len(t.Ticker.Bids); i++ {
+			if len(t.Ticker.Bids[i]) < 2 {
+				continue
+			}
 			ret.Bids = append(ret.Bids, global.DepthPair{Price: t.Ticker.Bids[i][0],
 				Size: t.Ticker.Bids[i][1]})
 		}

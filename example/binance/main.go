@@ -39,6 +39,10 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 	ts := global.TradeSymbol{Base: "btc", Quote: "usdt"}
+
+	kl, err := b.GetDepth(ts)
+	fmt.Printf("%+v, %+v\n", kl, err)
+
 	kech, err := b.SubLateTrade(ts)
 	fmt.Printf("%+v, %+v\n", kech, err)
 	depth, err := b.SubDepth(ts)

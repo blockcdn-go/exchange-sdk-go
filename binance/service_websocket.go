@@ -13,134 +13,134 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
-// 	symbol := strings.ToLower(sreq.Base + sreq.Quote)
-// 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@depth", symbol)
-// 	dial := websocket.DefaultDialer
-// 	if as.proxy != nil {
-// 		dial.Proxy = http.ProxyURL(as.proxy)
-// 	}
-// 	c, _, err := dial.Dial(url, nil)
-// 	if err != nil {
-// 		log.Println("dial:", err)
-// 		return nil, err
-// 	}
+func (as *apiService) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
+	symbol := strings.ToLower(sreq.Base + sreq.Quote)
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@depth", symbol)
+	dial := websocket.DefaultDialer
+	if as.proxy != nil {
+		dial.Proxy = http.ProxyURL(as.proxy)
+	}
+	c, _, err := dial.Dial(url, nil)
+	if err != nil {
+		log.Println("dial:", err)
+		return nil, err
+	}
 
-// 	dech := make(chan global.Depth)
+	dech := make(chan global.Depth)
 
-// 	go func() {
-// 		defer c.Close()
-// 		for {
-// 			select {
-// 			case <-as.Ctx.Done():
-// 				log.Println("closing reader ", url)
-// 				return
-// 			default:
-// 				_, message, err := c.ReadMessage()
-// 				if err != nil {
-// 					log.Println("wsRead ", err, url)
-// 					// reconnect
-// 					for {
-// 						c, _, err = dial.Dial(url, nil)
-// 						if err == nil {
-// 							log.Println("reconnect success")
-// 							break
-// 						}
-// 						time.Sleep(time.Second * 5)
-// 					}
-// 					continue
-// 				}
-// 				//fmt.Println("binance depth:", string(message))
-// 				rawDepth := struct {
-// 					Type          string          `json:"e"`
-// 					Time          float64         `json:"E"`
-// 					Symbol        string          `json:"s"`
-// 					UpdateID      int             `json:"u"`
-// 					BidDepthDelta [][]interface{} `json:"b"`
-// 					AskDepthDelta [][]interface{} `json:"a"`
-// 				}{}
-// 				if err := json.Unmarshal(message, &rawDepth); err != nil {
-// 					log.Println("wsUnmarshal", err, "body", string(message))
-// 					return
-// 				}
-// 				t, err := timeFromUnixTimestampFloat(rawDepth.Time)
-// 				if err != nil {
-// 					log.Println("wsUnmarshal", err, "body", string(message))
-// 					return
-// 				}
-// 				de := &DepthEvent{
-// 					WSEvent: WSEvent{
-// 						Type:   rawDepth.Type,
-// 						Time:   t,
-// 						Symbol: rawDepth.Symbol,
-// 					},
-// 					UpdateID: rawDepth.UpdateID,
-// 				}
-// 				for _, b := range rawDepth.BidDepthDelta {
-// 					p, err := floatFromString(b[0])
-// 					if err != nil {
-// 						log.Println("wsUnmarshal", err, "body", string(message))
-// 						return
-// 					}
-// 					q, err := floatFromString(b[1])
-// 					if err != nil {
-// 						log.Println("wsUnmarshal", err, "body", string(message))
-// 						return
-// 					}
-// 					de.Bids = append(de.Bids, &Order{
-// 						Price:    p,
-// 						Quantity: q,
-// 					})
-// 				}
-// 				for _, a := range rawDepth.AskDepthDelta {
-// 					p, err := floatFromString(a[0])
-// 					if err != nil {
-// 						log.Println("wsUnmarshal", err, "body", string(message))
-// 						return
-// 					}
-// 					q, err := floatFromString(a[1])
-// 					if err != nil {
-// 						log.Println("wsUnmarshal", err, "body", string(message))
-// 						return
-// 					}
-// 					de.Asks = append(de.Asks, &Order{
-// 						Price:    p,
-// 						Quantity: q,
-// 					})
-// 				}
+	go func() {
+		defer c.Close()
+		for {
+			select {
+			case <-as.Ctx.Done():
+				log.Println("closing reader ", url)
+				return
+			default:
+				_, message, err := c.ReadMessage()
+				if err != nil {
+					log.Println("wsRead ", err, url)
+					// reconnect
+					for {
+						c, _, err = dial.Dial(url, nil)
+						if err == nil {
+							log.Println("reconnect success")
+							break
+						}
+						time.Sleep(time.Second * 5)
+					}
+					continue
+				}
+				//fmt.Println("binance depth:", string(message))
+				rawDepth := struct {
+					Type          string          `json:"e"`
+					Time          float64         `json:"E"`
+					Symbol        string          `json:"s"`
+					UpdateID      int             `json:"u"`
+					BidDepthDelta [][]interface{} `json:"b"`
+					AskDepthDelta [][]interface{} `json:"a"`
+				}{}
+				if err := json.Unmarshal(message, &rawDepth); err != nil {
+					log.Println("wsUnmarshal", err, "body", string(message))
+					return
+				}
+				t, err := timeFromUnixTimestampFloat(rawDepth.Time)
+				if err != nil {
+					log.Println("wsUnmarshal", err, "body", string(message))
+					return
+				}
+				de := &DepthEvent{
+					WSEvent: WSEvent{
+						Type:   rawDepth.Type,
+						Time:   t,
+						Symbol: rawDepth.Symbol,
+					},
+					UpdateID: rawDepth.UpdateID,
+				}
+				for _, b := range rawDepth.BidDepthDelta {
+					p, err := floatFromString(b[0])
+					if err != nil {
+						log.Println("wsUnmarshal", err, "body", string(message))
+						return
+					}
+					q, err := floatFromString(b[1])
+					if err != nil {
+						log.Println("wsUnmarshal", err, "body", string(message))
+						return
+					}
+					de.Bids = append(de.Bids, &Order{
+						Price:    p,
+						Quantity: q,
+					})
+				}
+				for _, a := range rawDepth.AskDepthDelta {
+					p, err := floatFromString(a[0])
+					if err != nil {
+						log.Println("wsUnmarshal", err, "body", string(message))
+						return
+					}
+					q, err := floatFromString(a[1])
+					if err != nil {
+						log.Println("wsUnmarshal", err, "body", string(message))
+						return
+					}
+					de.Asks = append(de.Asks, &Order{
+						Price:    p,
+						Quantity: q,
+					})
+				}
 
-// 				//
-// 				r := global.Depth{
-// 					Base:  sreq.Base,
-// 					Quote: sreq.Quote,
-// 					Asks:  make([]global.DepthPair, 0, 5),
-// 					Bids:  make([]global.DepthPair, 0, 5),
-// 				}
-// 				for _, a := range de.Asks {
-// 					if a.Price == 0. || a.Quantity == 0. {
-// 						continue
-// 					}
-// 					r.Asks = append(r.Asks, global.DepthPair{
-// 						Price: a.Price,
-// 						Size:  a.Quantity,
-// 					})
-// 				}
-// 				for _, b := range de.Bids {
-// 					if b.Price == 0. || b.Quantity == 0. {
-// 						continue
-// 					}
-// 					r.Bids = append(r.Bids, global.DepthPair{
-// 						Price: b.Price,
-// 						Size:  b.Quantity,
-// 					})
-// 				}
-// 				dech <- r
-// 			}
-// 		}
-// 	}()
+				//
+				r := global.Depth{
+					Base:  sreq.Base,
+					Quote: sreq.Quote,
+					Asks:  make([]global.DepthPair, 0, 5),
+					Bids:  make([]global.DepthPair, 0, 5),
+				}
+				for _, a := range de.Asks {
+					if a.Price == 0. || a.Quantity == 0. {
+						continue
+					}
+					r.Asks = append(r.Asks, global.DepthPair{
+						Price: a.Price,
+						Size:  a.Quantity,
+					})
+				}
+				for _, b := range de.Bids {
+					if b.Price == 0. || b.Quantity == 0. {
+						continue
+					}
+					r.Bids = append(r.Bids, global.DepthPair{
+						Price: b.Price,
+						Size:  b.Quantity,
+					})
+				}
+				dech <- r
+			}
+		}
+	}()
 
-// 	return dech, nil
-// }
+	return dech, nil
+}
 
 func (as *apiService) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, error) {
 	symbol := strings.ToLower(sreq.Base + sreq.Quote)

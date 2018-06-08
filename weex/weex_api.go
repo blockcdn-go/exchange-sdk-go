@@ -54,6 +54,52 @@ func (c *Client) GetAllSymbol() ([]global.TradeSymbol, error) {
 	return ret, nil
 }
 
+// GetDepth 获取深度行情
+func (c *Client) GetDepth(req global.TradeSymbol) (global.Depth, error) {
+	sybmol := strings.ToLower(req.Base + req.Quote)
+	in := make(map[string]interface{})
+	in["market"] = sybmol
+	in["merge"] = 0
+	in["limit"] = 100
+	d := struct {
+		Asks [][]string `json:"asks"`
+		Bids [][]string `json:"bids"`
+	}{}
+	r := weexRsp{Data: &d}
+	err := c.httpReq("GET", "https://api.weex.com/v1/market/depth", in, &r, false)
+	if err != nil {
+		return global.Depth{}, err
+	}
+	if r.Code != 0 {
+		return global.Depth{}, errors.New(r.Msg)
+	}
+	dr := global.Depth{
+		Base:  req.Base,
+		Quote: req.Quote,
+		Asks:  []global.DepthPair{},
+		Bids:  []global.DepthPair{},
+	}
+	for _, a := range d.Asks {
+		if len(a) < 2 {
+			continue
+		}
+		dr.Asks = append(dr.Asks, global.DepthPair{
+			Price: toFloat(a[0]),
+			Size:  toFloat(a[1]),
+		})
+	}
+	for _, b := range d.Bids {
+		if len(b) < 2 {
+			continue
+		}
+		dr.Bids = append(dr.Bids, global.DepthPair{
+			Price: toFloat(b[0]),
+			Size:  toFloat(b[1]),
+		})
+	}
+	return dr, nil
+}
+
 // GetKline 获取k线数据
 func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
 	period := req.Period

@@ -2,6 +2,7 @@ package weex
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -15,22 +16,68 @@ func (c *Client) parse(msg []byte) {
 		Params []interface{} `json:"params"`
 	}{Params: []interface{}{}}
 
+	fmt.Println(string(msg))
 	err := json.Unmarshal(msg, &r)
 	if err != nil || r.Method == "" || len(r.Params) == 0 {
 		return
 	}
-	len := (len(r.Params) / 2) * 2
+	if strings.Contains(r.Method, "depth") {
+		len := (len(r.Params) / 3) * 3
+		for i := 0; i < len; i += 3 {
+			base, quote := split(r.Params[i+2].(string))
+			key := global.TradeSymbol{Base: base, Quote: quote}
 
-	for i := 0; i < len; i += 2 {
-		base, quote := split(r.Params[i].(string))
-		key := global.TradeSymbol{Base: base, Quote: quote}
-		if strings.Contains(r.Method, "today") {
+			c.mutex.Lock()
+			ch, ok := c.depth[key]
+			c.mutex.Unlock()
+			if !ok {
+				log.Printf("收到一个没有找到对应的消息 %+v %s\n", key, string(msg))
+				continue
+			}
+
+			v1m := r.Params[i+1].(map[string]interface{})
+			ret := global.Depth{
+				Base:  base,
+				Quote: quote,
+				Asks:  []global.DepthPair{},
+				Bids:  []global.DepthPair{},
+			}
+			asks := []interface{}{}
+			bids := []interface{}{}
+
+			if _, ok := v1m["asks"]; ok {
+				asks = v1m["asks"].([]interface{})
+			}
+			if _, ok := v1m["bids"]; ok {
+				bids = v1m["bids"].([]interface{})
+			}
+			for _, a := range asks {
+				va := a.([]interface{})
+				ret.Asks = append(ret.Asks, global.DepthPair{
+					Price: toFloat(va[0]),
+					Size:  toFloat(va[1]),
+				})
+			}
+			for _, b := range bids {
+				vb := b.([]interface{})
+				ret.Bids = append(ret.Bids, global.DepthPair{
+					Price: toFloat(vb[0]),
+					Size:  toFloat(vb[1]),
+				})
+			}
+			ch <- ret
+		}
+	} else if strings.Contains(r.Method, "today") {
+		len := (len(r.Params) / 2) * 2
+		for i := 0; i < len; i += 2 {
+			base, quote := split(r.Params[i].(string))
+			key := global.TradeSymbol{Base: base, Quote: quote}
 			c.mutex.Lock()
 			ch, ok := c.tick[key]
 			c.mutex.Unlock()
 			if !ok {
 				log.Printf("收到一个没有找到对应的消息 %+v %s\n", key, string(msg))
-				return
+				continue
 			}
 			v1m := r.Params[i+1].(map[string]interface{})
 			open := toFloat(v1m["open"])
@@ -45,13 +92,18 @@ func (c *Client) parse(msg []byte) {
 			v := ret.LastPrice - open
 			ret.PriceChange = v / open * 100
 			ch <- ret
-		} else if strings.Contains(r.Method, "deals") {
+		}
+	} else if strings.Contains(r.Method, "deals") {
+		len := (len(r.Params) / 2) * 2
+		for i := 0; i < len; i += 2 {
+			base, quote := split(r.Params[i].(string))
+			key := global.TradeSymbol{Base: base, Quote: quote}
 			c.mutex.Lock()
 			ch, ok := c.latetrade[key]
 			c.mutex.Unlock()
 			if !ok {
 				log.Printf("收到一个没有找到对应的消息 %+v %s\n", key, string(msg))
-				return
+				continue
 			}
 			sl := r.Params[i+1].([]interface{})
 			for _, s := range sl {
@@ -71,7 +123,6 @@ func (c *Client) parse(msg []byte) {
 			}
 		}
 	}
-
 }
 
 func split(symbol string) (string, string) {

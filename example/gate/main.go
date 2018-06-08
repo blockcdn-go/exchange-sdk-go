@@ -41,8 +41,8 @@ func main() {
 	ticker, e := c.TickerInfo("btc", "usdt")
 	fmt.Print("ticker ", ticker, e)
 
-	depth, e1 := c.DepthInfo("bcdn", "usdt")
-	fmt.Print("DepthInfo", depth, e1)
+	depth, e1 := c.GetDepth(resp[0])
+	fmt.Printf("GetDepth %+v, %+v\n", depth, e1)
 
 	tch, err := c.SubTicker(resp[0])
 	dch, err := c.SubDepth(resp[0])

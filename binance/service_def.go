@@ -66,6 +66,8 @@ type Service interface {
 	SubLateTrade(global.TradeSymbol) (chan global.LateTrade, error)
 	SubTicker(global.TradeSymbol) (chan global.Ticker, error)
 	SubDepth(global.TradeSymbol) (chan global.Depth, error)
+	// 查询深度行情
+	GetDepth(global.TradeSymbol) (global.Depth, error)
 	KlineWebsocket(symbol string, intr Interval) (chan *KlineEvent, error)
 	Ticker24Websocket() (chan *Ticker24, error)
 	UserDataWebsocket(listenKey string) (chan *AccountEvent, error)

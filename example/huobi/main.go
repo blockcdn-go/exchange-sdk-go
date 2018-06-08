@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/blockcdn-go/exchange-sdk-go/clean"
 	"github.com/blockcdn-go/exchange-sdk-go/global"
 	//	"net/http"
 	//	"net/url"
@@ -71,6 +72,9 @@ func main() {
 	// fmt.Println("GetMatchDetail: ", r6, e6)
 
 	cfg.WithWSSDialer(dialer)
+	transport := clean.DefaultPooledTransport()
+	transport.Proxy = http.ProxyURL(u)
+	cfg.WithHTTPClient(&http.Client{Transport: transport})
 	wss := huobi.NewClient(cfg)
 
 	pair := global.TradeSymbol{Base: "btc", Quote: "usdt"}
@@ -87,6 +91,16 @@ func main() {
 	if e2 != nil {
 		log.Fatal("query error: ", e2)
 	}
+
+	k, err := wss.GetKline(global.KlineReq{
+		Base:   pair.Base,
+		Quote:  pair.Quote,
+		Period: "1m",
+	})
+	fmt.Printf("%+v, %+v\n", err, k)
+
+	gd, e3 := wss.GetDepth(pair)
+	fmt.Printf("%+v %+v\n", e3, gd)
 
 	for {
 		select {
