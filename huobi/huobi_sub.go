@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/blockcdn-go/exchange-sdk-go/global"
+	"github.com/blockcdn-go/exchange-sdk-go/utils"
 )
 
 // GetKline websocket 查询kline
@@ -176,8 +177,9 @@ func (c *Client) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) 
 
 func (c *Client) connect() (*websocket.Conn, error) {
 	u := url.URL{Scheme: "wss", Host: *c.config.WSSHost, Path: "/ws"}
-	log.Printf("huobi 连接 %s 中...\n", u.String())
+	log.Printf("huobi 连接 %s 中... ", u.String())
 	conn, _, err := c.config.WSSDialer.Dial(u.String(), nil)
+	log.Printf("连接: %s\n", utils.Ternary(err == nil, "成功", "失败").(string))
 	return conn, err
 }
 

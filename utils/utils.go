@@ -53,3 +53,29 @@ func ToFloat(i interface{}) float64 {
 
 	return f
 }
+
+// Ternary 三目运算符
+func Ternary(exp bool, a interface{}, b interface{}) interface{} {
+	if exp {
+		return a
+	}
+	return b
+}
+
+// EndWith 是否以某个字符串结尾
+func EndWith(str string, substr string) bool {
+	strlen := len(str)
+	substrlen := len(substr)
+	if substrlen == 0 {
+		return true
+	}
+	if strlen == 0 {
+		return false
+	}
+	s1 := []byte(str)
+	s2 := []byte(substr)
+	if s1[strlen-1] != s2[substrlen-1] {
+		return false
+	}
+	return EndWith(string(s1[0:strlen-1]), string(s2[0:substrlen-1]))
+}

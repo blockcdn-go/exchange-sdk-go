@@ -50,10 +50,10 @@ func (c *Client) parse(msg []byte) {
 				bids = v1m["bids"].([]interface{})
 			}
 			for _, a := range asks {
-				va := a.([]interface{})
+				aa := a.([]interface{})
 				ret.Asks = append(ret.Asks, global.DepthPair{
-					Price: toFloat(va[0]),
-					Size:  toFloat(va[1]),
+					Price: toFloat(aa[0]),
+					Size:  toFloat(aa[1]),
 				})
 			}
 			for _, b := range bids {

@@ -53,14 +53,9 @@ func (c *Client) loopTicker() {
 			c.mutex.Unlock()
 			if ok {
 				tch <- global.Ticker{
-					Base:  base,
-					Quote: quote,
-					PriceChange: func() float64 {
-						if v.PercentChange >= 0. {
-							return v.Last * (v.PercentChange / 100)
-						}
-						return v.Last * (v.PercentChange / 100) * -1
-					}(),
+					Base:               base,
+					Quote:              quote,
+					PriceChange:        v.Last * (v.PercentChange / 100),
 					PriceChangePercent: v.PercentChange,
 					LastPrice:          v.Last,
 					HighPrice:          v.High24hr,

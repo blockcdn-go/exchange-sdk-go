@@ -1,13 +1,13 @@
 package weex
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/blockcdn-go/exchange-sdk-go/global"
+	"github.com/blockcdn-go/exchange-sdk-go/utils"
 	"github.com/gorilla/websocket"
 )
 
@@ -125,8 +125,9 @@ func (c *Client) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, e
 
 func (c *Client) connect() (*websocket.Conn, error) {
 	wsaddr := "wss://ws.weexpro.com/"
-	log.Printf("huobi 连接 %s 中...\n", wsaddr)
+	log.Printf("weex 连接 %s 中... ", wsaddr)
 	conn, _, err := c.config.WSSDialer.Dial(wsaddr, nil)
+	log.Printf("连接: %s\n", utils.Ternary(err == nil, "成功", "失败").(string))
 	return conn, err
 }
 
@@ -176,7 +177,7 @@ func (c *Client) wsConnect() error {
 		for {
 			msg, err := c.readWSMessage(c.sock)
 			if err != nil {
-				log.Printf("huobipro < %s > 断开连接，五秒后重连...\n", err.Error())
+				log.Printf("weex < %s > 断开连接，五秒后重连...\n", err.Error())
 				go func() {
 					time.Sleep(5 * time.Second)
 					c.wsConnect()
@@ -202,21 +203,5 @@ func (c *Client) readWSMessage(conn *websocket.Conn) ([]byte, error) {
 		return nil, err
 	}
 
-	if strings.Contains(string(msg), "ping") {
-		//fmt.Println(string(message))
-		var ping struct {
-			Ping int64 `json:"ping"`
-		}
-		err := json.Unmarshal(msg, &ping)
-		if err != nil {
-			return nil, nil
-		}
-		pong := struct {
-			Pong int64 `json:"pong"`
-		}{ping.Ping}
-		conn.WriteJSON(pong)
-		//fmt.Printf("%+v\n", pong)
-		return nil, nil
-	}
 	return msg, nil
 }
