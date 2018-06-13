@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sync"
+	"time"
+
+	"github.com/blockcdn-go/exchange-sdk-go/utils"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
 	"github.com/blockcdn-go/exchange-sdk-go/global"
@@ -48,14 +51,22 @@ func (c *Client) httpReq(method, path string, in map[string]interface{}, out int
 	if in == nil {
 		in = make(map[string]interface{})
 	}
+	sig := ""
 	if bs {
-		in["access_id"] = *c.config.APIKey
+		in["accesskey"] = *c.config.APIKey
+		sig = sign(utils.MapEncode(in), *c.config.Secret)
 	}
-
 	rbody, _ := json.Marshal(in)
 	if method == "GET" {
 		rbody = []byte{}
 	}
+	path += "?" + utils.MapEncode(in)
+	if bs {
+		path += "&sign=" + sig
+		path += "&reqTime=" + utils.ToString(time.Now().UnixNano()/1000000)
+	}
+
+	fmt.Println(path)
 	req, err := http.NewRequest(method, path, bytes.NewReader(rbody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) "+
@@ -73,7 +84,7 @@ func (c *Client) httpReq(method, path string, in map[string]interface{}, out int
 	if err != nil {
 		return err
 	}
-	//fmt.Printf("http message: %s\n", string(body))
+	fmt.Printf("http message: %s\n", string(body))
 	//extra.RegisterFuzzyDecoders()
 
 	err = jsoniter.Unmarshal(body, out)
