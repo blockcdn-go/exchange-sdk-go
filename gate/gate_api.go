@@ -144,6 +144,8 @@ func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
 			continue
 		}
 		k = append(k, global.Kline{
+			Base:      req.Base,
+			Quote:     req.Quote,
 			Timestamp: int64(rsp.Data[i][0]),
 			Volume:    rsp.Data[i][1],
 			Close:     rsp.Data[i][2],
