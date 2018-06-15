@@ -41,6 +41,7 @@ func (c *Client) loopTicker() {
 		r := map[string]TickerResponse{}
 		err := c.httpReq("GET", "/api2/1/tickers", nil, &r)
 		if err != nil {
+			fmt.Printf("/api2/1/tickers error: %s\n", err.Error())
 			time.Sleep(10 * time.Second)
 			continue
 		}
@@ -77,6 +78,7 @@ func (c *Client) loopDepth() {
 		}{}
 		err := c.httpReq("GET", "/api2/1/orderBooks", nil, &r)
 		if err != nil {
+			fmt.Printf("/api2/1/orderBooks error: %s\n", err.Error())
 			time.Sleep(10 * time.Second)
 			continue
 		}
@@ -99,7 +101,7 @@ func (c *Client) loopDepth() {
 
 			if len(t.Asks) >= 2 && t.Asks[0][0] > t.Asks[1][0] {
 				// 卖 倒序
-				for end := len(t.Asks); end > len(t.Asks); end-- {
+				for end := len(t.Asks); end != 0; end-- {
 					if len(t.Asks[end-1]) < 2 {
 						continue
 					}
