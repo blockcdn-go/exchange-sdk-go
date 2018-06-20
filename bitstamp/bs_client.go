@@ -8,15 +8,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/blockcdn-go/exchange-sdk-go/baseclass"
 	"github.com/blockcdn-go/exchange-sdk-go/config"
-	"github.com/blockcdn-go/exchange-sdk-go/qbase"
 	"github.com/blockcdn-go/exchange-sdk-go/utils"
 	jsoniter "github.com/json-iterator/go"
 )
 
 // Client 提供 API的调用客户端
 type Client struct {
-	qbase.Client
+	baseclass.Client
 }
 
 // NewClient 创建一个新的client

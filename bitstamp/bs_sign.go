@@ -2,17 +2,14 @@ package bitstamp
 
 import (
 	"crypto/hmac"
-	"crypto/md5"
 	"crypto/sha256"
 	"encoding/hex"
+	"strings"
 )
 
 func sign(str, key string) string {
-	m := md5.New()
-	m.Write([]byte(key))
-	mkey := hex.EncodeToString(m.Sum(nil))
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write([]byte(str))
 
-	hs := hmac.New(sha256.New, []byte(mkey))
-	hs.Write([]byte(str))
-	return hex.EncodeToString(hs.Sum(nil))
+	return strings.ToUpper(hex.EncodeToString(h.Sum(nil)))
 }

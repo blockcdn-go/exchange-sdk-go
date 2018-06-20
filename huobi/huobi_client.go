@@ -21,7 +21,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-// WSSClient 是huobi sdk的调用客户端
+// Client 是huobi sdk的调用客户端
 type Client struct {
 	config    config.Config
 	replay    bool

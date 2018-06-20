@@ -1,4 +1,4 @@
-package qbase
+package aicoin
 
 import (
 	"net/http"

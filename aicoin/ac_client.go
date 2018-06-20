@@ -1,4 +1,4 @@
-package qbase
+package aicoin
 
 import (
 	"bytes"
@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sync"
 
 	"github.com/blockcdn-go/exchange-sdk-go/config"
-	"github.com/blockcdn-go/exchange-sdk-go/global"
 	"github.com/blockcdn-go/exchange-sdk-go/utils"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
@@ -17,11 +15,7 @@ import (
 
 // Client 提供 API的调用客户端
 type Client struct {
-	Config    config.Config
-	Mutex     sync.Mutex
-	Tick      map[global.TradeSymbol]chan global.Ticker
-	Depth     map[global.TradeSymbol]chan global.Depth
-	Latetrade map[global.TradeSymbol]chan global.LateTrade
+	Config config.Config
 }
 
 // Constructor 创建一个新的client
@@ -32,9 +26,6 @@ func (c *Client) Constructor(config *config.Config) {
 	}
 	extra.RegisterFuzzyDecoders()
 	c.Config = *cfg
-	c.Tick = make(map[global.TradeSymbol]chan global.Ticker)
-	c.Depth = make(map[global.TradeSymbol]chan global.Depth)
-	c.Latetrade = make(map[global.TradeSymbol]chan global.LateTrade)
 }
 
 func (c *Client) aicoinHTTPReq(method, path string, in map[string]interface{}, out interface{}) error {

@@ -24,13 +24,3 @@ func (c *Client) GetAllSymbol() ([]global.TradeSymbol, error) {
 
 	return ret, nil
 }
-
-// GetDepth 获取深度行情
-func (c *Client) GetDepth(req global.TradeSymbol) (global.Depth, error) {
-	return c.AicoinGetDepth("bitstamp", req)
-}
-
-// GetKline 获取k线数据
-func (c *Client) GetKline(req global.KlineReq) ([]global.Kline, error) {
-	return c.AicoinGetKline("bitstamp", req)
-}
