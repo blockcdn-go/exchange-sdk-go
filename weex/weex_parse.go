@@ -88,7 +88,10 @@ func (c *Client) parse(msg []byte) {
 				Volume:    toFloat(v1m["volume"]),
 			}
 			v := ret.LastPrice - open
-			ret.PriceChange = v / open * 100
+			if open != 0. {
+				ret.PriceChange = v
+				ret.PriceChangePercent = v / open * 100
+			}
 			ch <- ret
 		}
 	} else if strings.Contains(r.Method, "deals") {

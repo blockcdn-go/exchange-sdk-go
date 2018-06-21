@@ -1,4 +1,4 @@
-package bitstamp
+package coinex
 
 import (
 	"bytes"
@@ -6,7 +6,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
+
+	"github.com/blockcdn-go/exchange-sdk-go/global"
 
 	"github.com/blockcdn-go/exchange-sdk-go/baseclass"
 	"github.com/blockcdn-go/exchange-sdk-go/config"
@@ -17,6 +22,10 @@ import (
 // Client 提供 API的调用客户端
 type Client struct {
 	baseclass.Client
+	sock     *websocket.Conn
+	tickOnce sync.Once
+	mtx      sync.Mutex
+	tick     map[global.TradeSymbol]chan global.Ticker
 }
 
 // NewClient 创建一个新的client
@@ -25,8 +34,10 @@ func NewClient(config *config.Config) *Client {
 	if config != nil {
 		cfg.MergeIn(config)
 	}
-	c := &Client{}
-	c.Exchange = "bitstamp"
+	c := &Client{
+		tick: make(map[global.TradeSymbol]chan global.Ticker),
+	}
+	c.Exchange = "coinex"
 	c.Constructor(config)
 	return c
 }
