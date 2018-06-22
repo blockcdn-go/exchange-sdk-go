@@ -28,6 +28,42 @@ func (c *Client) SubTicker(sreq global.TradeSymbol) (chan global.Ticker, error) 
 	return ch, nil
 }
 
+// SubDepth 订阅深度行情
+func (c *Client) SubDepth(sreq global.TradeSymbol) (chan global.Depth, error) {
+	ch := make(chan global.Depth, 100)
+
+	go func() {
+		for {
+			select {
+			case <-time.After(10 * time.Second):
+				d, err := c.GetDepth(sreq)
+				if err != nil {
+					ch <- d
+				}
+			}
+		}
+	}()
+
+	return ch, nil
+}
+
+// SubLateTrade 订阅交易详细数据
+func (c *Client) SubLateTrade(sreq global.TradeSymbol) (chan global.LateTrade, error) {
+	ch := make(chan global.LateTrade, 100)
+	go func() {
+		for {
+			select {
+			case <-time.After(10 * time.Second):
+				d, _ := c.getLateTrade(c.ltid, sreq)
+				for _, l := range d {
+					ch <- l
+				}
+			}
+		}
+	}()
+	return ch, nil
+}
+
 func (c *Client) connect(wsaddr string) (*websocket.Conn, error) {
 	log.Printf("coinex 连接 %s 中... ", wsaddr)
 	conn, _, err := c.Config.WSSDialer.Dial(wsaddr, nil)

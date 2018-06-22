@@ -25,6 +25,7 @@ type Client struct {
 	sock     *websocket.Conn
 	tickOnce sync.Once
 	mtx      sync.Mutex
+	ltid     int64 // 最后一次成交的id
 	tick     map[global.TradeSymbol]chan global.Ticker
 }
 
@@ -47,24 +48,29 @@ func (c *Client) httpReq(method, path string, in map[string]interface{}, out int
 		in = make(map[string]interface{})
 	}
 	sig := ""
+	urlPs := ""
 	if bs {
-		in["key"] = *c.Config.APIKey
-		in["nonce"] = utils.ToString(time.Now().Unix())
-		sig = sign(utils.MapEncode(in), *c.Config.Secret)
-		in["signature"] = sig
+		in["access_id"] = *c.Config.APIKey
+		in["tonce"] = utils.ToString(time.Now().UnixNano() / 1000000)
+		urlPs = utils.MapEncode(in) + "&secret_key=" + *c.Config.Secret
+		sig = sign(urlPs, *c.Config.Secret)
+	} else {
+		urlPs = utils.MapEncode(in)
 	}
 	rbody, _ := json.Marshal(in)
 	if method == "GET" {
 		rbody = []byte{}
 	}
-	path += "?" + utils.MapEncode(in)
+	path += "?" + urlPs
 
 	fmt.Println(path)
 	req, err := http.NewRequest(method, path, bytes.NewReader(rbody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) "+
 		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36")
-
+	if bs {
+		req.Header.Set("authorization", sig)
+	}
 	resp, err := c.Config.HTTPClient.Do(req)
 	if err != nil {
 		return err

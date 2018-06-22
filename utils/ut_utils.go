@@ -4,6 +4,7 @@ import (
 	"log"
 	"reflect"
 	"strconv"
+	"time"
 )
 
 // ToString ...
@@ -78,4 +79,34 @@ func EndWith(str string, substr string) bool {
 		return false
 	}
 	return EndWith(string(s1[0:strlen-1]), string(s2[0:substrlen-1]))
+}
+
+// Strftime 格式化成时间格式
+func Strftime(t interface{}) string {
+	it := int64(ToFloat(t))
+	return time.Unix(it, 0).Format("2006-01-02 03:04:05 PM")
+}
+
+// Period2Suffix *m => *min, *h => *hour, *w => *week, *d => *day,
+// special60 如果为true 则 1h => 60min
+func Period2Suffix(period string, special1h bool) string {
+	if special1h && period == "1h" {
+		return "60min"
+	}
+	if EndWith(period, "m") {
+		return period + "in"
+	}
+	if EndWith(period, "h") {
+		return period + "our"
+	}
+	if EndWith(period, "d") {
+		return period + "ay"
+	}
+	if EndWith(period, "w") {
+		return period + "eek"
+	}
+	if EndWith(period, "y") {
+		return period + "ear"
+	}
+	return period
 }

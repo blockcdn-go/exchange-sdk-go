@@ -1,14 +1,13 @@
 package coinex
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
+	"crypto/md5"
 	"encoding/hex"
 	"strings"
 )
 
 func sign(str, key string) string {
-	h := hmac.New(sha256.New, []byte(key))
+	h := md5.New()
 	h.Write([]byte(str))
 
 	return strings.ToUpper(hex.EncodeToString(h.Sum(nil)))
