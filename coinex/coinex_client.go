@@ -48,20 +48,16 @@ func (c *Client) httpReq(method, path string, in map[string]interface{}, out int
 		in = make(map[string]interface{})
 	}
 	sig := ""
-	urlPs := ""
 	if bs {
 		in["access_id"] = *c.Config.APIKey
 		in["tonce"] = utils.ToString(time.Now().UnixNano() / 1000000)
-		urlPs = utils.MapEncode(in) + "&secret_key=" + *c.Config.Secret
-		sig = sign(urlPs, *c.Config.Secret)
-	} else {
-		urlPs = utils.MapEncode(in)
+		sig = sign(utils.MapEncode(in)+"&secret_key="+*c.Config.Secret, *c.Config.Secret)
 	}
 	rbody, _ := json.Marshal(in)
 	if method == "GET" {
 		rbody = []byte{}
 	}
-	path += "?" + urlPs
+	path += "?" + utils.MapEncode(in)
 
 	fmt.Println(path)
 	req, err := http.NewRequest(method, path, bytes.NewReader(rbody))
